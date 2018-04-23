@@ -44,7 +44,7 @@ class KittiDataset(Dataset):
 	def __getitem__(self,idx):
 
 		path = self.img_names[idx]
-		image = cv2.imread(path,0)
+		image = cv2.imread(path)
 
 		newHeight = 1200
 		newWidth = 300
@@ -114,7 +114,7 @@ class Net(nn.Module):
 		super(Net, self).__init__()
 		self.conv1 = nn.Sequential(         # input shape (3, 1200, 300)
 			nn.Conv2d(
-				in_channels=1,              
+				in_channels=3,              
 				out_channels=16,            
 				kernel_size=5,              
 				stride=1,                   
@@ -178,12 +178,13 @@ def main():
 	optimizer = optim.Adam(model.parameters(),lr=0.06)   
 	loss_func = nn.CrossEntropyLoss()                       
 
-	for epoch in range(1):
+	for epoch in range(80):
+		print (epoch)
 		size = 0
 		correct = 0
 		for i_batch, sample in enumerate(train_dataloader):
 			# print(i_batch, sample['label'].size(),sample['image'].size())
-			image, label = Variable(sample["image"].view(len(sample["label"]),1,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
+			image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
 			output = model(image)
 			# print (output)
 			# print (output.size(),label.size())
@@ -221,7 +222,7 @@ def main():
 	size = 0
 	for i_batch, sample in enumerate(test_dataloader):
 			# print(i_batch, sample['label'].size(),sample['image'].size())
-		image, label = Variable(sample["image"].view(len(sample["label"]),1,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
+		image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
 		output = model(image)
 	
 		pred_y = torch.max(output, 1)[1].data.squeeze()
