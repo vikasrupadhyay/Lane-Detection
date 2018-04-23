@@ -179,7 +179,6 @@ def main():
 	loss_func = nn.CrossEntropyLoss()                       
 
 	for epoch in range(20):
-		print ("Epoch 1 ")
 		size = 0
 		correct = 0
 		for i_batch, sample in enumerate(train_dataloader):

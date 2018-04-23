@@ -178,8 +178,7 @@ def main():
 	optimizer = optim.Adam(model.parameters(),lr=0.06)   
 	loss_func = nn.CrossEntropyLoss()                       
 
-	for epoch in range(20):
-		print ("Epoch 1 ")
+	for epoch in range(1):
 		size = 0
 		correct = 0
 		for i_batch, sample in enumerate(train_dataloader):
@@ -222,7 +221,7 @@ def main():
 	size = 0
 	for i_batch, sample in enumerate(test_dataloader):
 			# print(i_batch, sample['label'].size(),sample['image'].size())
-		image, label = Variable(sample["image"].view(len(sample["label"]),1,1200,300).float()), Variable(sample["label"].float())
+		image, label = Variable(sample["image"].view(len(sample["label"]),1,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
 		output = model(image)
 	
 		pred_y = torch.max(output, 1)[1].data.squeeze()
