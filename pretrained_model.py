@@ -267,7 +267,7 @@ def main():
 	test_Data = KittiDataset(directory = test_directory)
 
 
-	test_dataloader = DataLoader(train_Data, batch_size=4, shuffle=True, num_workers=4)
+	test_dataloader = DataLoader(test_Data, batch_size=4, shuffle=True, num_workers=4)
 
 	accuracy = 0
 	correct = 0
