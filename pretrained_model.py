@@ -261,7 +261,7 @@ def main():
 	learningrate = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
 	model = train_model(model, criterion, optimizer, learningrate,
-							train_dataloader,num_epochs=25)
+							train_dataloader,num_epochs=10)
 
 
 	test_Data = KittiDataset(directory = test_directory)
@@ -276,9 +276,9 @@ def main():
 			# print(i_batch, sample['label'].size(),sample['image'].size())
 		if torch.cuda.is_available():
 
-			image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
+			image, label = Variable(sample["image"].view(len(sample["label"]),3,224,224).float()).cuda(), Variable(sample["label"].float()).cuda()
 		else:
-			image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()), Variable(sample["label"].float())
+			image, label = Variable(sample["image"].view(len(sample["label"]),3,224,224).float()), Variable(sample["label"].float())
 
 		output = model(image)
 	
