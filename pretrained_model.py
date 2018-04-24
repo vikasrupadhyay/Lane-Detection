@@ -172,59 +172,81 @@ def get_data_test():
 
 # currently validation is just the accuracy on the train set 
 # Will create the splits later on
-def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=25):
+def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=10):
 
 	best_model_wts = copy.deepcopy(model.state_dict())
 	best_acc = 0.0
 
+
+	print ("Model running model on trian and validation set")
+	number_of_batches = len(dataloaders)
+
+	validation_set_size = number_of_batches - number_of_batches*0.2
 	for epoch in range(num_epochs):
 		print('Epoch {}/{}'.format(epoch, num_epochs - 1))
 		print('-' * 10)
 
-		for phase in ['train', 'val']:
-			if phase == 'train':
-				scheduler.step()
-				model.train(True)  
+		phase ='train'
+		if phase == 'train':
+			scheduler.step()
+			model.train(True)  
+		else:
+			model.train(False)  
+
+		curloss = 0.0
+		correct = 0
+
+		size = 0
+		count = 0
+		print (len(dataloaders))
+		for data in tqdm(dataloaders):
+			count +=1
+			if count >= validation_set_size and phase != 'val':
+				epoch_loss = curloss / size
+				epoch_acc = correct / size
+				print('{} Loss: {:.4f} Acc: {:.4f}'.format(
+					phase, epoch_loss, epoch_acc))
+
+
+				curloss = 0.0
+				correct = 0
+
+				size = 0
+
+				phase ='val'
+
+			inputs, labels = data['image'].view(len(data["label"]),3,224,224).float(),data['label'].float()
+
+			if torch.cuda.is_available():
+				inputs = Variable(inputs.cuda())
+				labels = Variable(labels.cuda())
 			else:
-				model.train(False)  
+				inputs, labels = Variable(inputs), Variable(labels)
 
-			curloss = 0.0
-			correct = 0
+			optimizer.zero_grad()
 
-			size = 0
-			for data in dataloaders:
-				inputs, labels = data['image'].view(len(data["label"]),3,224,224).float(),data['label'].float()
+			outputs = model(inputs)
+			_, preds = torch.max(outputs.data, 1)
+			loss = criterion(outputs, labels.long())
 
-				if torch.cuda.is_available():
-					inputs = Variable(inputs.cuda())
-					labels = Variable(labels.cuda())
-				else:
-					inputs, labels = Variable(inputs), Variable(labels)
-
-				optimizer.zero_grad()
-
-				outputs = model(inputs)
-				_, preds = torch.max(outputs.data, 1)
-				loss = criterion(outputs, labels.long())
-
-				if phase == 'train':
-					loss.backward()
-					optimizer.step()
+			if phase == 'train':
+				loss.backward()
+				optimizer.step()
 
                 # statistics
-				curloss += loss.data[0] * inputs.size(0)
-				correct += torch.sum(preds == labels.data.long())
-				size += len(labels)
-			epoch_loss = curloss / size
-			epoch_acc = correct / size
+			curloss += loss.data[0] * inputs.size(0)
+			correct += torch.sum(preds == labels.data.long())
+			size += len(labels)
+		epoch_loss = curloss / size
+		epoch_acc = correct / size
 
-			print('{} Loss: {:.4f} Acc: {:.4f}'.format(
-				phase, epoch_loss, epoch_acc))
+		print('{} Loss: {:.4f} Acc: {:.4f}'.format(
+			phase, epoch_loss, epoch_acc))
 
-			# deep copy the model
-			if phase == 'val' and epoch_acc > best_acc:
-				best_acc = epoch_acc
-				best_model_wts = copy.deepcopy(model.state_dict())
+		# deep copy the model
+		if phase == 'val' and epoch_acc > best_acc:
+			best_acc = epoch_acc
+			best_model_wts = copy.deepcopy(model.state_dict())
 
 		print()
 
@@ -261,7 +283,7 @@ def main():
 	learningrate = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
 	model = train_model(model, criterion, optimizer, learningrate,
-							train_dataloader,num_epochs=10)
+							train_dataloader,num_epochs=1)
 
 
 	test_Data = KittiDataset(directory = test_directory)
@@ -272,7 +294,10 @@ def main():
 	accuracy = 0
 	correct = 0
 	size = 0
-	for i_batch, sample in enumerate(test_dataloader):
+
+	print ("**********************************")
+	print ("Running model on Test Set")
+	for i_batch, sample in tqdm(enumerate(test_dataloader)):
 			# print(i_batch, sample['label'].size(),sample['image'].size())
 		if torch.cuda.is_available():
 
