@@ -75,7 +75,7 @@ class KittiDataset(Dataset):
 
 		if self.transform:
 			self.transform = transforms.Compose(
-                   [transforms.Scale((224,224)),
+                   [transforms.Resize((224,224)),
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 

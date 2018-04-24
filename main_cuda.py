@@ -106,7 +106,7 @@ def get_data_train():
 	return np.array(train_image_labels).shape, np.array(train_images)
 
 
-
+class pretrained_VGG()
 
 
 class Net(nn.Module):
