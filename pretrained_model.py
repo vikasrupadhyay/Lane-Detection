@@ -29,15 +29,34 @@ parser.add_argument('--batch_size', type=int, default=4, metavar='B',
                     help='input batch size for training (default: 4)')
 parser.add_argument('--test_batch_size', type=int, default=4, metavar='TB',
                     help='input batch size for testing (default: 4)')
-parser.add_argument('--epochs', type=int, default=25, metavar='E',
-                    help='number of epochs to train (default: 2)')
-parser.add_argument('--lr', type=float, default=0.5, metavar='LR',
-                    help='learning rate (default: 0.5)')
+parser.add_argument('--epochs', type=int, default=10, metavar='E',
+                    help='number of epochs to train (default: 10)')
+parser.add_argument('--lr', type=float, default=0.006, metavar='LR',
+                    help='learning rate (default: 0.006)')
 
-parser.add_argument('--valid_set_size', type=float, default=1, metavar='VSS',
-                    help='validation set size (default: 1 so 10 %)')
+parser.add_argument('--valid_set_size', type=float, default=0.4, metavar='VSS',
+                    help='validation set size (default: 0.4 so 4 % of all the batchs)')
 
 
+parser.add_argument('--rot', type=int, default=0, metavar='RO',
+                    help='1 for augmentation by rotation')
+#setting Blurring for default augmentation
+parser.add_argument('--gb', type=int, default=1, metavar='GB',
+                    help='1 for augmentation by Gaussian Blurring')
+
+parser.add_argument('--spk', type=int, default=0, metavar='SN',
+                    help='1 for augmentation by Speckle Noise')
+
+parser.add_argument('--isw', type=int, default=0, metavar='ISW',
+                    help='1 for augmentation by Image Segmentation using watershed')
+
+parser.add_argument('--shr', type=int, default=0, metavar='SH',
+                    help='1 for augmentation by Shear')
+
+
+
+parser.add_argument('--prob', type=float, default=0.5, metavar='PR',
+                    help='Enter value between 0 and 1 for the probability by which augmentation is performed')
 
 
 def new_feature_dataset_type():
@@ -76,6 +95,7 @@ class KittiDataset(Dataset):
 		return len(self.img_names)
 
 	def __getitem__(self,idx):
+		args = parser.parse_args()
 
 		path = self.img_names[idx]
 		image = cv2.imread(path)
@@ -102,53 +122,61 @@ class KittiDataset(Dataset):
 			image_label = 2
 		if self.augment:
 
+			prob = args.prob
+
+			if prob <0 or prob >1:
+				prob =0.5
+
 			#rotation of image 
 			row,col,ch = 1200,300,3
 
-			angle = random.randint(1,80)
-			M = cv2.getRotationMatrix2D((300/2,1200/2),angle,1)
-			image = cv2.warpAffine(image.copy(),M,(300,1200))
+			if args.rot == 1 and np.random.uniform(0,1) > prob:
+				angle = random.randint(1,80)
+				M = cv2.getRotationMatrix2D((300/2,1200/2),angle,1)
+				image = cv2.warpAffine(image.copy(),M,(300,1200))
 			"""*********************************************"""
-
+			if args.gb == 1 and np.random.uniform(0,1) > prob:
 			#Gaussian Blurring
-			image = cv2.GaussianBlur(image,(5,5),0)
+
+				image = cv2.GaussianBlur(image,(5,5),0)
 
 
 			"""*********************************************"""
 			#Segmentation algorithm using watershed
+			if args.isw == 1 and np.random.uniform(0,1) > prob:
 
+				gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+				ret, thresh = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+				# noise removal
+				kernel = np.ones((3,3),np.uint8)
+				opening = cv2.morphologyEx(thresh,cv2.MORPH_OPEN,kernel, iterations = 2)
+				# sure background area
+				sure_bg = cv2.dilate(opening,kernel,iterations=3)
+				# Finding sure foreground area
+				dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
+				ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
+				# Finding unknown region
+				sure_fg = np.uint8(sure_fg)
+				unknown = cv2.subtract(sure_bg,sure_fg)
+				# Marker labelling
+				ret, markers = cv2.connectedComponents(sure_fg)
+				# Add one to all labels so that sure background is not 0, but 1
+				markers = markers+1
+				# Now, mark the region of unknown with zero
+				markers[unknown==255] = 0
 
-			gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-			ret, thresh = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
-			# noise removal
-			kernel = np.ones((3,3),np.uint8)
-			opening = cv2.morphologyEx(thresh,cv2.MORPH_OPEN,kernel, iterations = 2)
-			# sure background area
-			sure_bg = cv2.dilate(opening,kernel,iterations=3)
-			# Finding sure foreground area
-			dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
-			ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
-			# Finding unknown region
-			sure_fg = np.uint8(sure_fg)
-			unknown = cv2.subtract(sure_bg,sure_fg)
-			# Marker labelling
-			ret, markers = cv2.connectedComponents(sure_fg)
-			# Add one to all labels so that sure background is not 0, but 1
-			markers = markers+1
-			# Now, mark the region of unknown with zero
-			markers[unknown==255] = 0
-
-			markers = cv2.watershed(image,markers)
-			image[markers == -1] = [255,0,0]
+				markers = cv2.watershed(image,markers)
+				image[markers == -1] = [255,0,0]
 
 			"""*********************************************"""
 
 			#speckle noise
 
-			row,col,ch = 1200,300,3
-			gauss = np.random.randn(row,col,ch)
-			gauss = gauss.reshape(row,col,ch)        
-			noisy = image + image * gauss
+			if args.spk == 1 and np.random.uniform(0,1) > prob:
+				row,col,ch = 1200,300,3
+				gauss = np.random.randn(row,col,ch)
+				gauss = gauss.reshape(row,col,ch)        
+				image = image + image * gauss
 
 
 			#HOG descriptor of a image
@@ -157,16 +185,16 @@ class KittiDataset(Dataset):
 			# image = hog.compute(image)
 
 			#Shear transformation
+			if args.shr == 1 and np.random.uniform(0,1) > prob:
 
+				pts1 = np.float32([[5,5],[20,5],[5,20]])
 
-			pts1 = np.float32([[5,5],[20,5],[5,20]])
+				pt1 = 5+10*np.random.uniform()-10/2
+				pt2 = 20+10*np.random.uniform()-10/2
+				pts2 = np.float32([[pt1,5],[pt2,pt1],[5,pt2]])
+				shear = cv2.getAffineTransform(pts1,pts2)
 
-			pt1 = 5+10*np.random.uniform()-10/2
-			pt2 = 20+10*np.random.uniform()-10/2
-			pts2 = np.float32([[pt1,5],[pt2,pt1],[5,pt2]])
-			shear = cv2.getAffineTransform(pts1,pts2)
-
-			image = cv2.warpAffine(image,shear,(col,row))
+				image = cv2.warpAffine(image,shear,(col,row))
 
 
 		if self.transform:
@@ -270,10 +298,11 @@ def get_data_test():
 # currently validation is just the accuracy on the train set 
 # Will create the splits later on
 def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=10):
-	args = parser.parse_args()
 
 	best_model_wts = copy.deepcopy(model.state_dict())
 	best_acc = 0.0
+
+	args = parser.parse_args()
 
 
 	print ("Model running model on trian and validation set")
@@ -390,7 +419,21 @@ def main():
 	model = train_model(model, criterion, optimizer, learningrate,
 							train_dataloader,num_epochs)
 
-	print ("Training with some augmentation ")
+	print ("Training with the following augmentations : ")
+
+	if args.gb == 1:
+		print ('* Gaussian Blurring')
+	if args.rot == 1:
+		print ('* Rotation')
+	if args.shr == 1:
+		print ('* Shear')
+
+	if args.isw == 1:
+		print ('* Image Segmentation with watershed')
+
+	if args.spk == 1:
+
+		print ("* Speckle Noise ")
 
 	augmented_data = KittiDataset(directory = train_directory,augment = True)
 	augmented_dataloader = DataLoader(augmented_data, batch_size=num_batchs_test, shuffle=True, num_workers=4)
