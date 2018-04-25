@@ -28,17 +28,10 @@ parser.add_argument('--test_batch_size', type=int, default=4, metavar='TB',
                     help='input batch size for testing (default: 4)')
 parser.add_argument('--epochs', type=int, default=25, metavar='E',
                     help='number of epochs to train (default: 2)')
-<<<<<<< HEAD
 parser.add_argument('--lr', type=float, default=0.5, metavar='LR',
                     help='learning rate (default: 0.5)')
 
 parser.add_argument('--valid_set_size', type=float, default=1, metavar='VSS',
-=======
-parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
-                    help='learning rate (default: 0.01)')
-
-parser.add_argument('--valid_set_size', type=int, default=1, metavar='VSS',
->>>>>>> d81cd2cb46841320e93781cfdab15b49778d3cf8
                     help='validation set size (default: 1 so 10 %)')
 
 
