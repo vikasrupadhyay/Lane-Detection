@@ -20,6 +20,9 @@ from torch.optim import lr_scheduler
 import copy
 import PIL
 import argparse
+import random
+import Augmentor
+
 
 parser = argparse.ArgumentParser(description='Lane_detection_using_pretrained_resnet18')
 parser.add_argument('--batch_size', type=int, default=4, metavar='B',
@@ -49,11 +52,17 @@ class ToTensor(object):
 		return {'image': torch.from_numpy(image),'label': torch.from_numpy(label)}
 
 class KittiDataset(Dataset):
-	def __init__(self, directory, augment =False, transform=True):
+	def __init__(self, directory, augment = False, transform=True):
 		directory = directory + "/*.png"
 		self.img_names = list(glob.glob(directory))
 		# print (self.img_names)
 		self.transform = transform
+		self.augment = augment
+		# self.p = Augmentor.Pipeline(directory)
+		# self.p.random_distortion(probability=1, grid_width=4, grid_height=4, magnitude=8)
+		# self.p.flip_left_right(probability=0.5)
+		# self.p.flip_top_bottom(probability=0.5)
+
 
 	def __len__(self):
 		return len(self.img_names)
@@ -83,14 +92,21 @@ class KittiDataset(Dataset):
 		else:
 			print (" error in label")
 			image_label = 2
-		# if augment:
+		if self.augment:
 
-		# 	image2 =
-		# 	image3 =
+			#rotation of image 
+
+			angle = random.randint(1,80)
+			M = cv2.getRotationMatrix2D((300/2,1200/2),angle,1)
+			image = cv2.warpAffine(image.copy(),M,(300,1200))
+
+
+
 
 		if self.transform:
 			self.transform = transforms.Compose(
                    [transforms.Resize((224,224)),
+                   	# p.torch_transform(),
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
@@ -279,7 +295,7 @@ def main():
 	# train_y,train_x = get_data_train()
 	train_directory ='data_road/training/image_2'
 	test_directory = 'data_road/testing/image_2'
-	train_Data = KittiDataset(directory = train_directory)
+	train_Data = KittiDataset(directory = train_directory, augment = False)
 	correct_count = 0
 	# for i in range(len(train_Data)):
 	# 	sample = train_Data[i]
@@ -307,6 +323,15 @@ def main():
 
 	model = train_model(model, criterion, optimizer, learningrate,
 							train_dataloader,num_epochs)
+
+	print ("Training with some augmentation ")
+
+	augmented_data = KittiDataset(directory = train_directory,augment = True)
+	augmented_dataloader = DataLoader(augmented_data, batch_size=num_batchs_test, shuffle=True, num_workers=4)
+
+
+	model = train_model(model, criterion, optimizer, learningrate,
+							augmented_dataloader,num_epochs)
 
 
 	test_Data = KittiDataset(directory = test_directory)
