@@ -40,6 +40,14 @@ parser.add_argument('--valid_set_size', type=float, default=1, metavar='VSS',
 
 
 
+def new_feature_dataset_type():
+
+
+	#use feature detection algorithm such as sobel and scharr, will be implementing !!!!!!
+	return
+
+
+
 class ToTensor(object):
 	"""Convert ndarrays in sample to Tensors."""
 
@@ -95,12 +103,70 @@ class KittiDataset(Dataset):
 		if self.augment:
 
 			#rotation of image 
+			row,col,ch = 1200,300,3
 
 			angle = random.randint(1,80)
 			M = cv2.getRotationMatrix2D((300/2,1200/2),angle,1)
 			image = cv2.warpAffine(image.copy(),M,(300,1200))
+			"""*********************************************"""
+
+			#Gaussian Blurring
+			image = cv2.GaussianBlur(image,(5,5),0)
 
 
+			"""*********************************************"""
+			#Segmentation algorithm using watershed
+
+
+			gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+			ret, thresh = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+			# noise removal
+			kernel = np.ones((3,3),np.uint8)
+			opening = cv2.morphologyEx(thresh,cv2.MORPH_OPEN,kernel, iterations = 2)
+			# sure background area
+			sure_bg = cv2.dilate(opening,kernel,iterations=3)
+			# Finding sure foreground area
+			dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
+			ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
+			# Finding unknown region
+			sure_fg = np.uint8(sure_fg)
+			unknown = cv2.subtract(sure_bg,sure_fg)
+			# Marker labelling
+			ret, markers = cv2.connectedComponents(sure_fg)
+			# Add one to all labels so that sure background is not 0, but 1
+			markers = markers+1
+			# Now, mark the region of unknown with zero
+			markers[unknown==255] = 0
+
+			markers = cv2.watershed(image,markers)
+			image[markers == -1] = [255,0,0]
+
+			"""*********************************************"""
+
+			#speckle noise
+
+			row,col,ch = 1200,300,3
+			gauss = np.random.randn(row,col,ch)
+			gauss = gauss.reshape(row,col,ch)        
+			noisy = image + image * gauss
+
+
+			#HOG descriptor of a image
+
+			# hog = cv2.HOGDescriptor()
+			# image = hog.compute(image)
+
+			#Shear transformation
+
+
+			pts1 = np.float32([[5,5],[20,5],[5,20]])
+
+			pt1 = 5+10*np.random.uniform()-10/2
+			pt2 = 20+10*np.random.uniform()-10/2
+			pts2 = np.float32([[pt1,5],[pt2,pt1],[5,pt2]])
+			shear = cv2.getAffineTransform(pts1,pts2)
+
+			image = cv2.warpAffine(image,shear,(col,row))
 
 
 		if self.transform:
@@ -150,36 +216,36 @@ def get_data_train():
 
 
 
-# class Net(nn.Module):
-# 	def __init__(self):
-# 		super(Net, self).__init__()
-# 		self.conv1 = nn.Sequential(         # input shape (3, 1200, 300)
-# 			nn.Conv2d(
-# 				in_channels=1,              
-# 				out_channels=16,            
-# 				kernel_size=5,              
-# 				stride=1,                   
-# 				padding=2,                  
-# 			),                              
-# 			nn.ReLU(),                      
-# 			nn.MaxPool2d(kernel_size=2),    
-# 		)
-# 		self.conv2 = nn.Sequential(         
-# 			nn.Conv2d(16, 32, 5, 1, 2),     
-# 			nn.ReLU(),                      
-# 			nn.MaxPool2d(2),                
-# 		)
-# 		self.out = nn.Linear(32 * 300 * 75, 100)   
-# 		self.final = nn.Linear(100,3)
+class Net(nn.Module):
+	def __init__(self):
+		super(Net, self).__init__()
+		self.conv1 = nn.Sequential(         # input shape (3, 1200, 300)
+			nn.Conv2d(
+				in_channels=1,              
+				out_channels=16,            
+				kernel_size=5,              
+				stride=1,                   
+				padding=2,                  
+			),                              
+			nn.ReLU(),                      
+			nn.MaxPool2d(kernel_size=2),    
+		)
+		self.conv2 = nn.Sequential(         
+			nn.Conv2d(16, 32, 5, 1, 2),     
+			nn.ReLU(),                      
+			nn.MaxPool2d(2),                
+		)
+		self.out = nn.Linear(32 * 300 * 75, 100)   
+		self.final = nn.Linear(100,3)
 
-# 	def forward(self, x):
-# 		x = self.conv1(x)
-# 		x = self.conv2(x)
-# 		x = x.view(x.size(0), -1)           
-# 		output = self.out(x)
-# 		output = self.final(output)
-# 		output = F.log_softmax(output, dim=1)
-# 		return output    # return x for visualization if needed
+	def forward(self, x):
+		x = self.conv1(x)
+		x = self.conv2(x)
+		x = x.view(x.size(0), -1)           
+		output = self.out(x)
+		output = self.final(output)
+		output = F.log_softmax(output, dim=1)
+		return output    # return x for visualization if needed
 
 
 
