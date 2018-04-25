@@ -19,8 +19,20 @@ from tqdm import tqdm
 from torch.optim import lr_scheduler
 import copy
 import PIL
+import argparse
 
+parser = argparse.ArgumentParser(description='Lane_detection_using_pretrained_resnet18')
+parser.add_argument('--batch_size', type=int, default=4, metavar='B',
+                    help='input batch size for training (default: 4)')
+parser.add_argument('--test_batch_size', type=int, default=4, metavar='TB',
+                    help='input batch size for testing (default: 4)')
+parser.add_argument('--epochs', type=int, default=25, metavar='E',
+                    help='number of epochs to train (default: 2)')
+parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
+                    help='learning rate (default: 0.01)')
 
+parser.add_argument('--valid_set_size', type=int, default=1, metavar='VSS',
+                    help='validation set size (default: 1 so 10 %)')
 
 
 
@@ -37,7 +49,7 @@ class ToTensor(object):
 		return {'image': torch.from_numpy(image),'label': torch.from_numpy(label)}
 
 class KittiDataset(Dataset):
-	def __init__(self, directory, transform=True):
+	def __init__(self, directory, augment =False, transform=True):
 		directory = directory + "/*.png"
 		self.img_names = list(glob.glob(directory))
 		# print (self.img_names)
@@ -71,7 +83,10 @@ class KittiDataset(Dataset):
 		else:
 			print (" error in label")
 			image_label = 2
+		# if augment:
 
+		# 	image2 =
+		# 	image3 =
 
 		if self.transform:
 			self.transform = transforms.Compose(
@@ -173,6 +188,7 @@ def get_data_test():
 # currently validation is just the accuracy on the train set 
 # Will create the splits later on
 def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=10):
+	args = parser.parse_args()
 
 	best_model_wts = copy.deepcopy(model.state_dict())
 	best_acc = 0.0
@@ -180,11 +196,12 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 
 	print ("Model running model on trian and validation set")
 	number_of_batches = len(dataloaders)
-
-	validation_set_size = number_of_batches - number_of_batches*0.2
+	if args.valid_set_size > 8:
+		args.valid_set_size = 8
+	validation_set_size = number_of_batches - number_of_batches*args.valid_set_size*0.1
 	for epoch in range(num_epochs):
-		print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-		print('-' * 10)
+		print('Epoch {}/{}'.format(epoch+1, num_epochs))
+		print('**********************************************************************')
 
 		phase ='train'
 		if phase == 'train':
@@ -202,11 +219,12 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 		for data in tqdm(dataloaders):
 			count +=1
 			if count >= validation_set_size and phase != 'val':
+
 				epoch_loss = curloss / size
 				epoch_acc = correct / size
 				print('{} Loss: {:.4f} Acc: {:.4f}'.format(
 					phase, epoch_loss, epoch_acc))
-
+				print (" Now running model on a validation set ")
 
 				curloss = 0.0
 				correct = 0
@@ -256,6 +274,7 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	return model
 
 def main():
+	args = parser.parse_args()
 
 	# train_y,train_x = get_data_train()
 	train_directory ='data_road/training/image_2'
@@ -269,6 +288,10 @@ def main():
 
 
 	model = models.resnet18(pretrained=True).float()
+	num_epochs = args.epochs
+	num_batchs_test = args.test_batch_size
+	train_batch_size = args.batch_size
+	learningrate = args.lr
 
 	num_ftrs = model.fc.in_features
 	model.fc = nn.Linear(num_ftrs, 3)
@@ -278,18 +301,18 @@ def main():
 
 	criterion = nn.CrossEntropyLoss()
 
-	optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+	optimizer = optim.SGD(model.parameters(), learningrate, momentum=0.9)
 
 	learningrate = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
 	model = train_model(model, criterion, optimizer, learningrate,
-							train_dataloader,num_epochs=1)
+							train_dataloader,num_epochs)
 
 
 	test_Data = KittiDataset(directory = test_directory)
 
 
-	test_dataloader = DataLoader(test_Data, batch_size=4, shuffle=True, num_workers=4)
+	test_dataloader = DataLoader(test_Data, batch_size=num_batchs_test, shuffle=True, num_workers=4)
 
 	accuracy = 0
 	correct = 0
