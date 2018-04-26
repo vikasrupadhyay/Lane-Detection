@@ -426,7 +426,7 @@ def main():
 
 	if args.noaug == 1:
 
-		print ("Training with the following augmentations : ")
+			print ("Training with the following augmentations : ")
 
 		if args.gb == 1:
 			print ('* Gaussian Blurring')
