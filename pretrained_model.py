@@ -59,6 +59,10 @@ parser.add_argument('--prob', type=float, default=0.5, metavar='PR',
                     help='Enter value between 0 and 1 for the probability by which augmentation is performed')
 
 
+parser.add_argument('--noaug', type=int, default=1, metavar='NA',
+                    help='Enter 0 for no Augmentation at all')
+
+
 def new_feature_dataset_type():
 
 
@@ -419,28 +423,33 @@ def main():
 	model = train_model(model, criterion, optimizer, learningrate,
 							train_dataloader,num_epochs)
 
-	print ("Training with the following augmentations : ")
 
-	if args.gb == 1:
-		print ('* Gaussian Blurring')
-	if args.rot == 1:
-		print ('* Rotation')
-	if args.shr == 1:
-		print ('* Shear')
+	if args.noaug == 1:
 
-	if args.isw == 1:
-		print ('* Image Segmentation with watershed')
+		print ("Training with the following augmentations : ")
 
-	if args.spk == 1:
+		if args.gb == 1:
+			print ('* Gaussian Blurring')
+		if args.rot == 1:
+			print ('* Rotation')
+		if args.shr == 1:
+			print ('* Shear')
 
-		print ("* Speckle Noise ")
+		if args.isw == 1:
+			print ('* Image Segmentation with watershed')
 
-	augmented_data = KittiDataset(directory = train_directory,augment = True)
-	augmented_dataloader = DataLoader(augmented_data, batch_size=num_batchs_test, shuffle=True, num_workers=4)
+		if args.spk == 1:
+
+			print ("* Speckle Noise ")
 
 
-	model = train_model(model, criterion, optimizer, learningrate,
-							augmented_dataloader,num_epochs)
+
+		augmented_data = KittiDataset(directory = train_directory,augment = True)
+		augmented_dataloader = DataLoader(augmented_data, batch_size=num_batchs_test, shuffle=True, num_workers=4)
+
+
+		model = train_model(model, criterion, optimizer, learningrate,
+								augmented_dataloader,num_epochs)
 
 
 	test_Data = KittiDataset(directory = test_directory)
