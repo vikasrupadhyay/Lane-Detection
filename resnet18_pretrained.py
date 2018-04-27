@@ -367,7 +367,8 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 				optimizer.step()
 
                 # statistics
-			curloss += loss.data[0] * inputs.size(0)
+			# curloss += loss.data[0] * inputs.size(0)
+			curloss += loss.item() * inputs.size(0)
 			correct += torch.sum(preds == labels.data.long())
 			size += len(labels)
 		epoch_loss = curloss / size
