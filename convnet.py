@@ -408,8 +408,10 @@ def main():
 	train_batch_size = args.batch_size
 	learningrate = args.lr
 
-
-	model = Net().float()
+	if torch.cuda.is_available():
+		model = Net().float().cuda()
+	else:
+		model = Net().float()
 	# model.train()
 	learningrate = args.lr
 
