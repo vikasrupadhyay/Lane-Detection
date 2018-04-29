@@ -133,7 +133,7 @@ class KittiDataset(Dataset):
 
 			#rotation of image 
 			row,col,ch = 1200,300,3
-
+			cv2.imwrite('image.png',image)
 			if args.rot == 1 and np.random.uniform(0,1) > prob:
 				angle = random.randint(1,80)
 				M = cv2.getRotationMatrix2D((300/2,1200/2),angle,1)
@@ -171,6 +171,7 @@ class KittiDataset(Dataset):
 
 				markers = cv2.watershed(image,markers)
 				image[markers == -1] = [255,0,0]
+				cv2.imwrite('Segmentation.png',image)
 
 			"""*********************************************"""
 
@@ -183,13 +184,14 @@ class KittiDataset(Dataset):
 				image = image + image * gauss
 
 
+
 			#HOG descriptor of a image
 
 			# hog = cv2.HOGDescriptor()
 			# image = hog.compute(image)
 
 			#Shear transformation
-			if args.shr == 1 and np.random.uniform(0,1) > prob:
+			if args.shr == 1 :
 
 				pts1 = np.float32([[5,5],[20,5],[5,20]])
 
@@ -199,6 +201,7 @@ class KittiDataset(Dataset):
 				shear = cv2.getAffineTransform(pts1,pts2)
 
 				image = cv2.warpAffine(image,shear,(col,row))
+				cv2.imwrite('shear.png',image)
 
 
 		if self.transform:

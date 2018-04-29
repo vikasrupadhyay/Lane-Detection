@@ -254,7 +254,7 @@ class Net(nn.Module):
 		self.conv1 = nn.Sequential(         # input shape (3, 1200, 300)
 			nn.Conv2d(
 				in_channels=3,              
-				out_channels=16,            
+				out_channels=64,            
 				kernel_size=5,              
 				stride=1,                   
 				padding=2,                  
@@ -263,16 +263,21 @@ class Net(nn.Module):
 			nn.MaxPool2d(kernel_size=2),    
 		)
 		self.conv2 = nn.Sequential(         
-			nn.Conv2d(16, 32, 5, 1, 2),     
+			nn.Conv2d(64, 128, 5, 1, 2),     
 			nn.ReLU(),                      
 			nn.MaxPool2d(2),                
 		)
-		self.out = nn.Linear(32 * 300 * 75, 100)   
-		self.final = nn.Linear(100,3)
+		self.conv3 = nn.Sequential(
+			nn.Conv2d(128,264,5,1,2),
+			nn.ReLU(),)
+		self.out = nn.Linear(264 * 300 * 75, 300) 
+
+		self.final = nn.Linear(300,3)
 
 	def forward(self, x):
 		x = self.conv1(x)
 		x = self.conv2(x)
+		x = self.conv3(x)
 		x = x.view(x.size(0), -1)           
 		output = self.out(x)
 		output = self.final(output)
