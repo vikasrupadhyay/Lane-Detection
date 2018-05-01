@@ -191,10 +191,9 @@ class KittiDataset(Dataset):
                    	# p.torch_transform(),
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-
 			image = self.transform(PIL.Image.fromarray(image))
-		dictionary  ={}
+
+		dictionary = {}
 		# print (image.shape)
 		dictionary["image"] = np.array(image,dtype = float)
 		dictionary["label"] = float(image_label)
@@ -220,9 +219,9 @@ def get_data_train():
 	return np.array(train_image_labels).shape, np.array(train_images)
 
 
-class BasicBlock(nn.Module):
+class Block(nn.Module):
     def __init__(self, in_planes, out_planes, stride, dropRate=0.0):
-        super(BasicBlock, self).__init__()
+        super(Block, self).__init__()
         self.bn1 = nn.BatchNorm2d(in_planes)
         self.relu1 = nn.ReLU(inplace=True)
         self.conv1 = nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -254,12 +253,14 @@ class NetworkBlock(nn.Module):
         super(NetworkBlock, self).__init__()
         self.layer = self._make_layer(block, in_planes, out_planes, nb_layers, stride, dropRate)
     
+
     def _make_layer(self, block, in_planes, out_planes, nb_layers, stride, dropRate):
         layers = []
         for i in range(nb_layers):
             layers.append(block(i == 0 and in_planes or out_planes, out_planes, i == 0 and stride or 1, dropRate))
         return nn.Sequential(*layers)
     
+
     def forward(self, x):
         return self.layer(x)
 
@@ -270,7 +271,7 @@ class WideResNet(nn.Module):
         nChannels = [16, 16*widen_factor, 32*widen_factor, 64*widen_factor]
         assert((depth - 4) % 6 == 0)
         n = int((depth - 4) / 6)
-        block = BasicBlock
+        block = Block
         # 1st conv before any network block
         self.conv1 = nn.Conv2d(3, nChannels[0], kernel_size=3, stride=1,
                                padding=1, bias=False)
@@ -365,19 +366,24 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 
 				phase ='val'
 
-			inputs, labels = data['image'].view(len(data["label"]),3,1200,300).float(),data['label'].float()
+			inputs, labels = data['image'].view(len(data["label"]), 3, 1200, 300).float(),data['label'].float()
 
 			if torch.cuda.is_available():
 				inputs = Variable(inputs.cuda())
 				labels = Variable(labels.cuda())
 			else:
-				inputs, labels = Variable(inputs), Variable(labels)
+				inputs = Variable(inputs)
+				labels = Variable(labels)
 
 			optimizer.zero_grad()
 
 			outputs = model(inputs)
 			_, preds = torch.max(outputs.data, 1)
+			print(labels.long())
+			print(number_of_batches)
+			print(outputs)
 			loss = criterion(outputs, labels.long())
+			print(loss)
 
 			if phase == 'train':
 				loss.backward()
@@ -414,9 +420,6 @@ def main():
 	test_directory = 'data_road/testing/image_2'
 	train_Data = KittiDataset(directory = train_directory)
 	correct_count = 0
-	# for i in range(len(train_Data)):
-	# 	sample = train_Data[i]
-	# 	print (len(sample))
 	train_dataloader = DataLoader(train_Data, batch_size=4, shuffle=True, num_workers=4)
 
 	num_epochs = args.epochs
@@ -426,12 +429,14 @@ def main():
 
 	if torch.cuda.is_available():
 		model = WideResNet(args.layers, 3).float().cuda()
+		criterion = nn.CrossEntropyLoss().cuda()
 	else:
 		model = WideResNet(args.layers, 3).float()
+		criterion = nn.CrossEntropyLoss()
+
 	# model.train()
 	learningrate = args.lr
 
-	criterion = nn.CrossEntropyLoss().cuda()
 	optimizer = torch.optim.SGD(model.parameters(), lr=0.06)
 	learningrate = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
@@ -451,11 +456,11 @@ def main():
 		if args.spk == 1:
 			print ("* Speckle Noise ")
 
-		augmented_data = KittiDataset(directory = train_directory,augment = True)
+		augmented_data = KittiDataset(directory = train_directory, augment = True)
 		augmented_dataloader = DataLoader(augmented_data, batch_size=num_batchs_test, shuffle=True, num_workers=4)
 
 		model = train_model(model, criterion, optimizer, learningrate,
-								augmented_dataloader,num_epochs)
+								augmented_dataloader, num_epochs)
 
 	test_Data = KittiDataset(directory = test_directory)
 	test_dataloader = DataLoader(test_Data, batch_size=num_batchs_test, shuffle=True, num_workers=4)
