@@ -254,20 +254,29 @@ def get_data_train():
 class Net(nn.Module):
 	def __init__(self):
 		super(Net, self).__init__()
-		self.conv1 = nn.Conv2d(3, 10, kernel_size=4,stride =2)
-		self.conv2 = nn.Conv2d(10, 20, kernel_size=4, stride =2)
-		self.conv2_drop = nn.Dropout2d(0.3)
-		self.fc1 = nn.Linear(20*74*18, 150)
+		self.conv1 = nn.Conv2d(3, 5, kernel_size=4,stride =2)
+		self.conv2 = nn.Conv2d(5, 10, kernel_size=4, stride =2)
+		self.conv3 = nn.Conv2d(10, 15, kernel_size=4, stride =1)
+		self.conv4 = nn.Conv2d(15, 20, kernel_size=4, stride =1)
+		self.conv2_drop = nn.Dropout2d(0.1)
+		self.batchnorm1=nn.BatchNorm2d(3)
+		self.batchnorm2=nn.BatchNorm2d(5)
+		self.batchnorm3=nn.BatchNorm2d(10)
+		self.fc1 = nn.Linear(20*16*2, 150)
 		self.fc2 = nn.Linear(150, 3)
 
 	def forward(self, x):
 		#print(x.size())
-		x = F.relu(F.max_pool2d(self.conv1(x), 2))
+		x = F.relu(F.max_pool2d(self.conv1(self.batchnorm1(x)), 2))
 		#print(x.size())
-		x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+		x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(self.batchnorm2(x))), 2))
+		x = F.relu(F.max_pool2d((self.conv3(self.batchnorm3(x))), 2))
+		x = F.relu(F.max_pool2d(self.conv2_drop(self.conv4(x)), 2))
+		#print(x.size())
+		#exit()
 		#x = x.view(-1, 5328)
 		#print(-1,20*74*18)
-		x = x.view(-1,20*74*18)
+		x = x.view(-1,20*16*2)
 		#print(x.size())
 		x = F.relu(self.fc1(x))
 		x = F.dropout(x, training=self.training)
@@ -461,9 +470,9 @@ def main():
 			# print(i_batch, sample['label'].size(),sample['image'].size())
 		if torch.cuda.is_available():
 
-			image, label = Variable(sample["image"].view(len(sample["label"]),3,224,224).float()).cuda(), Variable(sample["label"].float()).cuda()
+			image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
 		else:
-			image, label = Variable(sample["image"].view(len(sample["label"]),3,224,224).float()), Variable(sample["label"].float())
+			image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()), Variable(sample["label"].float())
 
 		output = model(image)
 	
