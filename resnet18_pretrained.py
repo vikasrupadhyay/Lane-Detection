@@ -22,7 +22,7 @@ import PIL
 import argparse
 import random
 import Augmentor
-
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='Lane_detection_using_pretrained_resnet18')
 parser.add_argument('--batch_size', type=int, default=4, metavar='B',
@@ -310,7 +310,8 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	best_acc = 0.0
 
 	args = parser.parse_args()
-
+	accuracies = []
+	losses = []
 
 	print ("Model running model on trian and validation set")
 	number_of_batches = len(dataloaders)
@@ -334,12 +335,17 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 		size = 0
 		count = 0
 		print (len(dataloaders))
+		val_accuracies = []
+		val_losses = []
 		for data in tqdm(dataloaders):
 			count +=1
 			if count >= validation_set_size and phase != 'val':
 
 				epoch_loss = curloss / size
 				epoch_acc = correct / size
+
+				val_accuracies.append(epoch_acc)
+				val_losses.append(epoch_loss)
 				print('{} Loss: {:.4f} Acc: {:.4f}'.format(
 					phase, epoch_loss, epoch_acc))
 				print (" Now running model on a validation set ")
@@ -376,6 +382,8 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 			size += len(labels)
 		epoch_loss = curloss / size
 		epoch_acc = correct / size
+		accuracies.append(epoch_acc)
+		losses.append(epoch_loss)
 
 		print('{} Loss: {:.4f} Acc: {:.4f}'.format(
 			phase, epoch_loss, epoch_acc))
@@ -388,6 +396,13 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 		print()
 
 	print('Best val Acc: {:4f}'.format(best_acc))
+
+
+	plt.plot(accuracies, list(range(1,10)))
+	plt.plot(losses, list(range(1,10)))
+
+	plt.plot(val_accuracies, list(range(1,10)))
+	plt.plot(val_losses, list(range(1,10)))
 
 	model.load_state_dict(best_model_wts)
 	return model
