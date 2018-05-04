@@ -260,17 +260,17 @@ class autoencoder(nn.Module):
     def __init__(self):
         super(autoencoder, self).__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, 16, 3, stride=3, padding=1), 
+            nn.Conv2d(3, 32, 3, stride=3, padding=1), 
             nn.ReLU(True),
             nn.MaxPool2d(2, stride=2),  
-            nn.Conv2d(16, 8, 3, stride=2, padding=2),  
+            nn.Conv2d(32, 8, 3, stride=2, padding=2),  
             nn.ReLU(True),
             nn.MaxPool2d(2, stride=1)  
         )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(8, 16, 3, stride=2),  
+            nn.ConvTranspose2d(8, 32, 3, stride=2),  
             nn.ReLU(True),
-            nn.ConvTranspose2d(16, 8, 5, stride=3, padding=2),  
+            nn.ConvTranspose2d(32, 8, 5, stride=3, padding=2),  
             nn.ReLU(True),
             nn.ConvTranspose2d(8, 3, 2, stride=2, padding=1),  
             nn.Tanh()
@@ -392,7 +392,7 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	pic2 = to_img(inputs.cpu().data)
 	save_image(pic, 'tea.png')
 	save_image(pic2,"tea2.png")
-
+	print(labels.cpu().data)
 	return model
 
 def main():
