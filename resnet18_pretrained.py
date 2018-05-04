@@ -370,7 +370,7 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 			outputs = model(inputs)
 			_, preds = torch.max(outputs.data, 1)
 			loss = criterion(outputs, labels.long())
-
+			# print(loss.grad)
 			if phase == 'train':
 				loss.backward()
 				optimizer.step()

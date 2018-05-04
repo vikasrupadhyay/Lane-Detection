@@ -24,6 +24,43 @@ import random
 import Augmentor
 
 
+class Net(nn.Module):
+	def __init__(self):
+		super(Net, self).__init__()
+		self.conv1 = nn.Sequential(         # input shape (3, 1200, 300)
+			nn.Conv2d(
+				in_channels=3,              
+				out_channels=8,            
+				kernel_size=5,              
+				stride=1,                   
+				padding=2,                  
+			),                              
+			nn.ReLU(),                      
+			nn.MaxPool2d(kernel_size=2),    
+		)
+		self.conv2 = nn.Sequential(         
+			nn.Conv2d(8, 16, 5, 1, 2),     
+			nn.ReLU(),                      
+			nn.MaxPool2d(2),                
+		)
+		# self.conv3 = nn.Sequential(
+		# 	nn.Conv2d(128,264,5,1,2),
+		# 	nn.ReLU(),)
+		self.out = nn.Linear(16 * 300 * 75, 300) 
+
+		self.final = nn.Linear(300,3)
+
+	def forward(self, x):
+		x = self.conv1(x)
+		x = self.conv2(x)
+		# x = self.conv3(x)
+		x = x.view(x.size(0), -1)           
+		output = self.out(x)
+		output = self.final(output)
+		output = F.log_softmax(output, dim=1)
+		return output    # return x for visualization if needed
+
+
 parser = argparse.ArgumentParser(description='Lane_detection_using_pretrained_resnet18')
 parser.add_argument('--batch_size', type=int, default=4, metavar='B',
                     help='input batch size for training (default: 4)')
@@ -133,7 +170,7 @@ class KittiDataset(Dataset):
 
 			#rotation of image 
 			row,col,ch = 1200,300,3
-
+			cv2.imwrite('image.png',image)
 			if args.rot == 1 and np.random.uniform(0,1) > prob:
 				angle = random.randint(1,80)
 				M = cv2.getRotationMatrix2D((300/2,1200/2),angle,1)
@@ -171,6 +208,7 @@ class KittiDataset(Dataset):
 
 				markers = cv2.watershed(image,markers)
 				image[markers == -1] = [255,0,0]
+				cv2.imwrite('Segmentation.png',image)
 
 			"""*********************************************"""
 
@@ -183,13 +221,14 @@ class KittiDataset(Dataset):
 				image = image + image * gauss
 
 
+
 			#HOG descriptor of a image
 
 			# hog = cv2.HOGDescriptor()
 			# image = hog.compute(image)
 
 			#Shear transformation
-			if args.shr == 1 and np.random.uniform(0,1) > prob:
+			if args.shr == 1 :
 
 				pts1 = np.float32([[5,5],[20,5],[5,20]])
 
@@ -199,11 +238,12 @@ class KittiDataset(Dataset):
 				shear = cv2.getAffineTransform(pts1,pts2)
 
 				image = cv2.warpAffine(image,shear,(col,row))
+				cv2.imwrite('shear.png',image)
 
 
 		if self.transform:
 			self.transform = transforms.Compose(
-                   [#transforms.Resize((224,224)),
+                   [
                    	# p.torch_transform(),
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -254,7 +294,7 @@ class Net(nn.Module):
 		self.conv1 = nn.Sequential(         # input shape (3, 1200, 300)
 			nn.Conv2d(
 				in_channels=3,              
-				out_channels=64,            
+				out_channels=16,            
 				kernel_size=5,              
 				stride=1,                   
 				padding=2,                  
@@ -263,21 +303,16 @@ class Net(nn.Module):
 			nn.MaxPool2d(kernel_size=2),    
 		)
 		self.conv2 = nn.Sequential(         
-			nn.Conv2d(64, 128, 5, 1, 2),     
+			nn.Conv2d(16, 32, 5, 1, 2),     
 			nn.ReLU(),                      
 			nn.MaxPool2d(2),                
 		)
-		self.conv3 = nn.Sequential(
-			nn.Conv2d(128,264,5,1,2),
-			nn.ReLU(),)
-		self.out = nn.Linear(264 * 300 * 75, 300) 
-
-		self.final = nn.Linear(300,3)
+		self.out = nn.Linear(32 * 300 * 75, 100)   
+		self.final = nn.Linear(100,3)
 
 	def forward(self, x):
 		x = self.conv1(x)
 		x = self.conv2(x)
-		x = self.conv3(x)
 		x = x.view(x.size(0), -1)           
 		output = self.out(x)
 		output = self.final(output)
@@ -314,7 +349,7 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	args = parser.parse_args()
 
 
-	print ("Running model on trian and validation set")
+	print ("Model running model on trian and validation set")
 	number_of_batches = len(dataloaders)
 	if args.valid_set_size > 8:
 		args.valid_set_size = 8
@@ -335,7 +370,7 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 
 		size = 0
 		count = 0
-		# print (len(dataloaders))
+		print (len(dataloaders))
 		for data in tqdm(dataloaders):
 			count +=1
 			if count >= validation_set_size and phase != 'val':
@@ -352,27 +387,34 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 				size = 0
 
 				phase ='val'
-
-			inputs, labels = data['image'].view(len(data["label"]),3,1200,300).float(),data['label'].float()
-
 			if torch.cuda.is_available():
-				inputs = Variable(inputs.cuda())
-				labels = Variable(labels.cuda())
+
+				inputs, labels = Variable(data["image"].view(len(data["label"]),3,1200,300).float()).cuda(), Variable(data["label"].float()).cuda()
 			else:
-				inputs, labels = Variable(inputs), Variable(labels)
+				inputs, labels = Variable(data["image"].view(len(data["label"]),3,1200,300).float()), Variable(data["label"].float())
+
+
+			# inputs, labels = data['image'].view(len(data["label"]),3,1200,300).float(),data['label'].float()
+
+			# if torch.cuda.is_available():
+			# 	inputs = Variable(inputs.cuda())
+			# 	labels = Variable(labels.cuda())
+			# else:
+			# 	inputs, labels = Variable(inputs), Variable(labels)
 
 			optimizer.zero_grad()
 
 			outputs = model(inputs)
 			_, preds = torch.max(outputs.data, 1)
 			loss = criterion(outputs, labels.long())
-
+			# print(loss.grad)
 			if phase == 'train':
 				loss.backward()
 				optimizer.step()
 
                 # statistics
 			curloss += loss.data[0] * inputs.size(0)
+			# curloss += loss.item() * inputs.size(0)
 			correct += torch.sum(preds == labels.data.long())
 			size += len(labels)
 		epoch_loss = curloss / size
@@ -382,7 +424,7 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 			phase, epoch_loss, epoch_acc))
 
 		# deep copy the model
-		if phase == 'val' and epoch_acc > best_acc:
+		if phase == 'val' and epoch_acc >= best_acc:
 			best_acc = epoch_acc
 			best_model_wts = copy.deepcopy(model.state_dict())
 
@@ -394,34 +436,35 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	return model
 
 def main():
-
 	args = parser.parse_args()
-
 
 	# train_y,train_x = get_data_train()
 	train_directory ='data_road/training/image_2'
 	test_directory = 'data_road/testing/image_2'
-	train_Data = KittiDataset(directory = train_directory)
+	train_Data = KittiDataset(directory = train_directory, augment = False)
 	correct_count = 0
 	# for i in range(len(train_Data)):
 	# 	sample = train_Data[i]
 	# 	print (len(sample))
 	train_dataloader = DataLoader(train_Data, batch_size=4, shuffle=True, num_workers=4)
 
+
+	model = Net().float()
 	num_epochs = args.epochs
 	num_batchs_test = args.test_batch_size
 	train_batch_size = args.batch_size
 	learningrate = args.lr
 
-	if torch.cuda.is_available():
-		model = Net().float().cuda()
-	else:
-		model = Net().float()
-	# model.train()
-	learningrate = args.lr
+	# num_ftrs = model.fc.in_features
+	# model.fc = nn.Linear(num_ftrs, 3)
 
-	optimizer = optim.Adam(model.parameters(),lr=0.06)   
-	criterion = nn.CrossEntropyLoss()                       
+	if torch.cuda.is_available():
+		model = model.cuda()
+
+	criterion = nn.CrossEntropyLoss()
+
+	optimizer = optim.SGD(model.parameters(), learningrate, momentum=0.9)
+
 	learningrate = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
 	model = train_model(model, criterion, optimizer, learningrate,
@@ -490,4 +533,7 @@ def main():
 
 
 
-main()
+
+if __name__ == '__main__':
+
+    main()
