@@ -389,9 +389,9 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 				phase ='val'
 			if torch.cuda.is_available():
 
-				image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
+				image, label = Variable(data["image"].view(len(data["label"]),3,1200,300).float()).cuda(), Variable(data["label"].float()).cuda()
 			else:
-				image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()), Variable(sample["label"].float())
+				image, label = Variable(data["image"].view(len(data["label"]),3,1200,300).float()), Variable(data["label"].float())
 
 
 			# inputs, labels = data['image'].view(len(data["label"]),3,1200,300).float(),data['label'].float()
