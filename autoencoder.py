@@ -389,8 +389,9 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 
 	# model.load_state_dict(best_model_wts)
 	pic = to_img(outputs.cpu().data)
-
+	pic2 = to_img(inputs.cpu().data)
 	save_image(pic, 'tea.png')
+	save_image(pic2,"tea2.png")
 
 	return model
 
