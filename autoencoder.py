@@ -22,6 +22,8 @@ import PIL
 import argparse
 import random
 import Augmentor
+from torchvision.utils import save_image
+
 
 
 parser = argparse.ArgumentParser(description='Lane_detection_using_pretrained_resnet18')
@@ -70,11 +72,8 @@ def new_feature_dataset_type():
 	return
 
 
-def custom_loss(image,output,layer):
 
 
-	val = torch.mean((image - output) ** 2) + torch.norm(layer.weight.data, p=1)
-	return val
 
 class ToTensor(object):
 	"""Convert ndarrays in sample to Tensors."""
@@ -225,6 +224,12 @@ class KittiDataset(Dataset):
 
 
 
+def to_img(x):
+	x = 0.5 * (x + 1)
+	x = x.clamp(0, 1)
+	x = x.view(x.size(0), 3, 300, 1200)
+	return x
+
 
 def get_data_train():
 
@@ -266,16 +271,16 @@ class autoencoder(nn.Module):
             nn.ConvTranspose2d(8, 16, 3, stride=2),  
             nn.ReLU(True),
             nn.ConvTranspose2d(16, 8, 5, stride=3, padding=2),  
-            nn.ReLU(True)
+            nn.ReLU(True),
+            nn.ConvTranspose2d(8, 3, 2, stride=2, padding=1),  
+            nn.Tanh()
         )
-       	self.final = nn.ConvTranspose2d(8, 3, 2, stride=2, padding=1)
 
     def forward(self, x):
         x = self.encoder(x)
         # print (x.size())
         x = self.decoder(x)
-        x = self.final(x)
-        return F.log_softmax(x, dim=1)
+        return x
 
 
 def get_data_test():
@@ -311,7 +316,6 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	if args.valid_set_size > 8:
 		args.valid_set_size = 8
 	validation_set_size = number_of_batches - number_of_batches*args.valid_set_size*0.1
-	
 	for epoch in range(num_epochs):
 		print('Epoch {}/{}'.format(epoch+1, num_epochs))
 		print('**********************************************************************')
@@ -349,21 +353,22 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 			inputs, labels = data['image'].view(len(data["label"]),3,1200,300).float(),data['label'].float()
 
 			if torch.cuda.is_available():
-				inputs = Variable(inputs.cuda(),requires_grad=True)
-				labels = Variable(labels.cuda(),requires_grad=True)
+				inputs = Variable(inputs.cuda())
+				labels = Variable(labels.cuda())
 			else:
-				inputs, labels = Variable(inputs,requires_grad=True), Variable(labels,requires_grad=True)
+				inputs, labels = Variable(inputs), Variable(labels)
 
 			optimizer.zero_grad()
 
 			outputs = model(inputs)
-			loss = custom_loss(inputs, outputs,model.final)
+			loss = criterion(outputs, inputs)
 
 			if phase == 'train':
 				loss.backward()
 				optimizer.step()
-			# print(loss.grad)
 
+			# print (loss)
+                # statistics
 			curloss += loss.data[0] * inputs.size(0)
 	# 		correct += torch.sum(preds == labels.data.long())
 	 		size += len(labels)
@@ -383,7 +388,10 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	# print('Best val Acc: {:4f}'.format(best_acc))
 
 	# model.load_state_dict(best_model_wts)
-	print (outputs)
+	pic = to_img(outputs.cpu().data)
+
+	save_image(pic, 'tea.png')
+
 	return model
 
 def main():
@@ -414,7 +422,7 @@ def main():
 	learningrate = args.lr
 
 	optimizer = optim.Adam(model.parameters(),lr=0.06)   
-	criterion = nn.CrossEntropyLoss()                  
+	criterion = nn.MSELoss()                    
 	learningrate = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
 	model = train_model(model, criterion, optimizer, learningrate,
