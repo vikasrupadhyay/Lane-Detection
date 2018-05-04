@@ -22,6 +22,7 @@ import PIL
 import argparse
 import random
 import Augmentor
+import matplotlib.pyplot as plt
 
 
 parser = argparse.ArgumentParser(description='Lane_detection_using_pretrained_resnet18')
@@ -317,6 +318,13 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	if args.valid_set_size > 8:
 		args.valid_set_size = 8
 	validation_set_size = number_of_batches - number_of_batches*args.valid_set_size*0.1
+	
+	train_accuracies = []
+	train_losses = []
+
+	val_accuracies = []
+	val_losses = []
+
 	for epoch in range(num_epochs):
 		print('Epoch {}/{}'.format(epoch+1, num_epochs))
 		print('**********************************************************************')
@@ -340,6 +348,9 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 
 				epoch_loss = curloss / size
 				epoch_acc = correct / size
+				if phase == 'train':
+					train_accuracies.append(epoch_acc)
+					train_losses.append(epoch_loss)
 				print('{} Loss: {:.4f} Acc: {:.4f}'.format(
 					phase, epoch_loss, epoch_acc))
 				print (" Now running model on a validation set ")
@@ -379,6 +390,10 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 		epoch_loss = curloss / size
 		epoch_acc = correct / size
 
+		if phase == 'val':
+			val_accuracies.append(epoch_acc)
+			val_losses.append(epoch_loss)
+
 		print('{} Loss: {:.4f} Acc: {:.4f}'.format(
 			phase, epoch_loss, epoch_acc))
 
@@ -390,6 +405,23 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 		print()
 
 	print('Best val Acc: {:4f}'.format(best_acc))
+
+	plt.plot(list(range(num_epochs)), train_accuracies)
+	plt.title("Training Accuracy")
+	plt.show()
+	fig1 = plt.figure()
+	plt.plot(list(range(num_epochs)), train_losses)
+	plt.title("Training Loss")
+	plt.show()
+
+	fig2 = plt.figure()
+	plt.plot(list(range(num_epochs)), val_accuracies)
+	plt.title("Validation Accuracy")
+	plt.show()
+	fig3 = plt.figure()
+	plt.plot(list(range(num_epochs)), val_losses)
+	plt.title("Validation Loss")
+	plt.show()
 
 	model.load_state_dict(best_model_wts)
 	return model
@@ -405,7 +437,7 @@ def main():
 	# for i in range(len(train_Data)):
 	# 	sample = train_Data[i]
 	# 	print (len(sample))
-	train_dataloader = DataLoader(train_Data, batch_size=4, shuffle=True, num_workers=4)
+	train_dataloader = DataLoader(train_Data, batch_size=4, shuffle=True, num_workers=0)
 
 
 	model = Net()
