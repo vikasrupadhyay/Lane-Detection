@@ -387,14 +387,20 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 				size = 0
 
 				phase ='val'
-
-			inputs, labels = data['image'].view(len(data["label"]),3,1200,300).float(),data['label'].float()
-
 			if torch.cuda.is_available():
-				inputs = Variable(inputs.cuda())
-				labels = Variable(labels.cuda())
+
+				image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
 			else:
-				inputs, labels = Variable(inputs), Variable(labels)
+				image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()), Variable(sample["label"].float())
+
+
+			# inputs, labels = data['image'].view(len(data["label"]),3,1200,300).float(),data['label'].float()
+
+			# if torch.cuda.is_available():
+			# 	inputs = Variable(inputs.cuda())
+			# 	labels = Variable(labels.cuda())
+			# else:
+			# 	inputs, labels = Variable(inputs), Variable(labels)
 
 			optimizer.zero_grad()
 
@@ -508,9 +514,9 @@ def main():
 			# print(i_batch, sample['label'].size(),sample['image'].size())
 		if torch.cuda.is_available():
 
-			image, label = Variable(sample["image"].view(len(sample["label"]),3,224,224).float()).cuda(), Variable(sample["label"].float()).cuda()
+			image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
 		else:
-			image, label = Variable(sample["image"].view(len(sample["label"]),3,224,224).float()), Variable(sample["label"].float())
+			image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()), Variable(sample["label"].float())
 
 		output = model(image)
 	
