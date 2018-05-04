@@ -284,7 +284,9 @@ class WideResNet(nn.Module):
         # global average pooling and classifier
         self.bn1 = nn.BatchNorm2d(nChannels[3])
         self.relu = nn.ReLU(inplace=True)
-        self.fc = nn.Linear(nChannels[3], num_classes)
+        self.final2 = nn.Linear(21312, 300) 
+        self.final = nn.Linear(300,3)
+
         self.nChannels = nChannels[3]
 
         for m in self.modules():
@@ -305,8 +307,10 @@ class WideResNet(nn.Module):
         out = self.block3(out)
         out = self.relu(self.bn1(out))
         out = F.avg_pool2d(out, 8)
-        out = out.view(-1, self.nChannels)
-        return self.fc(out)
+        out = out.view(x.size(0),-1)
+        out = self.final2(out)
+        out = self.final(out)
+        return F.log_softmax(out, dim=1)
 
 
 def get_data_test():
@@ -380,10 +384,10 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 			outputs = model(inputs)
 			_, preds = torch.max(outputs.data, 1)
 			print(labels.long())
-			print(number_of_batches)
-			print(outputs)
+			print()
+			print(outputs.size(),outputs)
 			loss = criterion(outputs, labels.long())
-			print(loss)
+			print(" This is the loss ",loss)
 
 			if phase == 'train':
 				loss.backward()
@@ -437,7 +441,7 @@ def main():
 	# model.train()
 	learningrate = args.lr
 
-	optimizer = torch.optim.SGD(model.parameters(), lr=0.06)
+	optimizer = optim.Adam(model.parameters(),lr=0.06)
 	learningrate = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
 	model = train_model(model, criterion, optimizer, learningrate,
