@@ -1,4 +1,29 @@
 from __future__ import print_function
+from __future__ import print_function, division
+import os
+import glob
+import torch
+import pandas as pd
+import numpy as np
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms, utils
+import cv2
+import torchvision.models as models
+from torchvision import transforms, utils
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import torchvision
+from torch.autograd import Variable
+from tqdm import tqdm
+from torch.optim import lr_scheduler
+import copy
+import PIL
+import argparse
+import random
+import Augmentor
+from torchvision.utils import save_image
 import argparse
 import torch
 import torch.utils.data
@@ -31,6 +56,175 @@ args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
 
+
+class ToTensor(object):
+    """Convert ndarrays in sample to Tensors."""
+
+    def __call__(self, sample):
+        image, label = sample['image'], sample['label']
+
+        # swap color axis because
+        # numpy image: H x W x C
+        # torch image: C X H X W
+        return {'image': torch.from_numpy(image),'label': torch.from_numpy(label)}
+
+class KittiDataset(Dataset):
+    def __init__(self, directory, augment = False, transform=True):
+        directory = directory + "/*.png"
+        self.img_names = list(glob.glob(directory))
+        # print (self.img_names)
+        self.transform = transform
+        self.augment = augment
+        # self.p = Augmentor.Pipeline(directory)
+        # self.p.random_distortion(probability=1, grid_width=4, grid_height=4, magnitude=8)
+        # self.p.flip_left_right(probability=0.5)
+        # self.p.flip_top_bottom(probability=0.5)
+
+
+    def __len__(self):
+        return len(self.img_names)
+
+    def __getitem__(self,idx):
+        args = parser.parse_args()
+
+        path = self.img_names[idx]
+        image = cv2.imread(path)
+
+        newHeight = 1200
+        newWidth = 300
+        # oldHeight = image.shape[0]
+        # oldWidth = image.shape[1]
+        # r = newHeight / oldHeight
+        # newWidth = int(oldWidth * r)
+        dim = (newHeight, newWidth)
+        image = cv2.resize(image, dim,3, interpolation = cv2.INTER_AREA)
+        # image = image.transpose(1,3)
+        image_label = 0
+        # print ("works")
+        if 'uu_' in path:
+            image_label = 0
+        elif 'umm_' in path:
+            image_label = 1
+        elif 'um_' in path:
+            image_label = 2
+        else:
+            print (" error in label")
+            image_label = 2
+        if self.augment:
+
+            prob = args.prob
+
+            if prob <0 or prob >1:
+                prob =0.5
+
+            #rotation of image 
+            row,col,ch = 1200,300,3
+
+            if args.rot == 1 and np.random.uniform(0,1) > prob:
+                angle = random.randint(1,80)
+                M = cv2.getRotationMatrix2D((300/2,1200/2),angle,1)
+                image = cv2.warpAffine(image.copy(),M,(300,1200))
+            """*********************************************"""
+            if args.gb == 1 and np.random.uniform(0,1) > prob:
+            #Gaussian Blurring
+
+                image = cv2.GaussianBlur(image,(5,5),0)
+
+
+            """*********************************************"""
+            #Segmentation algorithm using watershed
+            if args.isw == 1 and np.random.uniform(0,1) > prob:
+
+                gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+                ret, thresh = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+                # noise removal
+                kernel = np.ones((3,3),np.uint8)
+                opening = cv2.morphologyEx(thresh,cv2.MORPH_OPEN,kernel, iterations = 2)
+                # sure background area
+                sure_bg = cv2.dilate(opening,kernel,iterations=3)
+                # Finding sure foreground area
+                dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
+                ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
+                # Finding unknown region
+                sure_fg = np.uint8(sure_fg)
+                unknown = cv2.subtract(sure_bg,sure_fg)
+                # Marker labelling
+                ret, markers = cv2.connectedComponents(sure_fg)
+                # Add one to all labels so that sure background is not 0, but 1
+                markers = markers+1
+                # Now, mark the region of unknown with zero
+                markers[unknown==255] = 0
+
+                markers = cv2.watershed(image,markers)
+                image[markers == -1] = [255,0,0]
+
+            """*********************************************"""
+
+            #speckle noise
+
+            if args.spk == 1 and np.random.uniform(0,1) > prob:
+                row,col,ch = 1200,300,3
+                gauss = np.random.randn(row,col,ch)
+                gauss = gauss.reshape(row,col,ch)        
+                image = image + image * gauss
+
+
+            #HOG descriptor of a image
+
+            # hog = cv2.HOGDescriptor()
+            # image = hog.compute(image)
+
+            #Shear transformation
+            if args.shr == 1 and np.random.uniform(0,1) > prob:
+
+                pts1 = np.float32([[5,5],[20,5],[5,20]])
+
+                pt1 = 5+10*np.random.uniform()-10/2
+                pt2 = 20+10*np.random.uniform()-10/2
+                pts2 = np.float32([[pt1,5],[pt2,pt1],[5,pt2]])
+                shear = cv2.getAffineTransform(pts1,pts2)
+
+                image = cv2.warpAffine(image,shear,(col,row))
+
+
+        if self.transform:
+            self.transform = transforms.Compose(
+                   [#transforms.Resize((224,224)),
+                    # p.torch_transform(),
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+
+            image = self.transform(PIL.Image.fromarray(image))
+
+        dictionary  ={}
+
+        # print (image.shape)
+        dictionary["image"] = np.array(image,dtype = float)
+        dictionary["label"] = float(image_label)
+        return dictionary
+
+
+
+def to_img(x):
+    x = 0.5 * (x + 1)
+    x = x.clamp(0, 1)
+    x = x.view(x.size(0), 3, 300, 1200)
+    return x
+
+train_directory ='data_road/training/image_2'
+test_directory = 'data_road/testing/image_2'
+train_Data = KittiDataset(directory = train_directory, augment = False)
+correct_count = 0
+# for i in range(len(train_Data)):
+#   sample = train_Data[i]
+#   print (len(sample))
+train_dataloader = DataLoader(train_Data, batch_size=4, shuffle=True, num_workers=4)
+test_Data = KittiDataset(directory = test_directory)
+test_dataloader = DataLoader(test_Data, batch_size=4, shuffle=True, num_workers=4)
+
+
+
 torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
@@ -55,7 +249,7 @@ class VAE(nn.Module):
         self.conv2 = nn.Conv2d(3, 32, kernel_size=2, stride=2, padding=0)
         self.conv3 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1)
         self.conv4 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1)
-        self.fc1 = nn.Linear(16 * 16 * 32, args.intermediate_size)
+        self.fc1 = nn.Linear(1200 * 300 * 32, args.intermediate_size)
 
         # Latent space
         self.fc21 = nn.Linear(args.intermediate_size, args.hidden_size)
@@ -102,6 +296,7 @@ class VAE(nn.Module):
 
     def forward(self, x):
         mu, logvar = self.encode(x)
+        print (mu.size(),logvar.size())
         z = self.reparameterize(mu, logvar)
         return self.decode(z), mu, logvar
 
@@ -129,8 +324,13 @@ def loss_function(recon_x, x, mu, logvar):
 def train(epoch):
     model.train()
     train_loss = 0
-    for batch_idx, (data, _) in enumerate(train_loader):
-        data = Variable(data)
+    for batch_idx, sample in enumerate(train_dataloader):
+        if args.cuda:
+            image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
+        else:
+            image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()), Variable(sample["label"].float())
+
+        data = image
         if args.cuda:
             data = data.cuda()
         optimizer.zero_grad()
@@ -152,7 +352,7 @@ def train(epoch):
 def test(epoch):
     model.eval()
     test_loss = 0
-    for i, (data, _) in enumerate(test_loader):
+    for i, (data, _) in enumerate(test_dataloader):
         if args.cuda:
             data = data.cuda()
         data = Variable(data, volatile=True)
