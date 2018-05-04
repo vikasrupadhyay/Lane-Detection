@@ -255,16 +255,18 @@ def get_data_train():
 class Net(nn.Module):
 	def __init__(self):
 		super(Net, self).__init__()
-		self.conv1 = nn.Conv2d(3, 5, kernel_size=4,stride =2)
-		self.conv2 = nn.Conv2d(5, 10, kernel_size=4, stride =2)
+		self.conv1 = nn.Conv2d(3, 5, kernel_size=3,stride =2)
+		self.conv2 = nn.Conv2d(5, 10, kernel_size=3, stride =2)
 		self.conv3 = nn.Conv2d(10, 15, kernel_size=4, stride =1)
 		self.conv4 = nn.Conv2d(15, 20, kernel_size=4, stride =1)
 		self.conv2_drop = nn.Dropout2d(0.1)
 		self.batchnorm1=nn.BatchNorm2d(3)
 		self.batchnorm2=nn.BatchNorm2d(5)
 		self.batchnorm3=nn.BatchNorm2d(10)
-		self.fc1 = nn.Linear(20*16*2, 150)
-		self.fc2 = nn.Linear(150, 3)
+		self.batchnorm4=nn.BatchNorm2d(15)
+		self.fc1 = nn.Linear(20*16*2, 320)
+		self.fc2 = nn.Linear(320, 60)
+		self.fc3 = nn.Linear(60,3)
 
 	def forward(self, x):
 		#print(x.size())
@@ -272,7 +274,7 @@ class Net(nn.Module):
 		#print(x.size())
 		x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(self.batchnorm2(x))), 2))
 		x = F.relu(F.max_pool2d((self.conv3(self.batchnorm3(x))), 2))
-		x = F.relu(F.max_pool2d(self.conv2_drop(self.conv4(x)), 2))
+		x = F.relu(F.max_pool2d(self.conv2_drop(self.conv4(self.batchnorm4(x))), 2))
 		#print(x.size())
 		#exit()
 		#x = x.view(-1, 5328)
@@ -280,8 +282,9 @@ class Net(nn.Module):
 		x = x.view(-1,20*16*2)
 		#print(x.size())
 		x = F.relu(self.fc1(x))
-		x = F.dropout(x, training=self.training)
 		x = self.fc2(x)
+		x = F.dropout(x, training=self.training)
+		x = self.fc3(x)
 		return F.log_softmax(x, dim=1)
 
 
@@ -406,21 +409,17 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 
 	print('Best val Acc: {:4f}'.format(best_acc))
 
-	plt.plot(list(range(num_epochs)), train_accuracies)
-	plt.title("Training Accuracy")
+	plt.plot(list(range(num_epochs)), train_accuracies,"green", label = "Training Accuracy")
+	plt.plot(list(range(num_epochs)), val_accuracies,"blue", label = "Validation Accuracy")
+	plt.title("Accuracy")
+	plt.legend(loc="upper right", borderaxespad=1)
+	plt.savefig("Accuracy-Convnet.png")
 	plt.show()
-	fig1 = plt.figure()
-	plt.plot(list(range(num_epochs)), train_losses)
-	plt.title("Training Loss")
-	plt.show()
-
-	fig2 = plt.figure()
-	plt.plot(list(range(num_epochs)), val_accuracies)
-	plt.title("Validation Accuracy")
-	plt.show()
-	fig3 = plt.figure()
-	plt.plot(list(range(num_epochs)), val_losses)
-	plt.title("Validation Loss")
+	plt.plot(list(range(num_epochs)), train_losses, "orange",label = "Training Loss")
+	plt.plot(list(range(num_epochs)), val_losses,"red", label = "Validation Loss")
+	plt.title("Loss")
+	plt.legend(loc="upper right", borderaxespad=1)
+	plt.savefig("Loss-Convnet.png")
 	plt.show()
 
 	model.load_state_dict(best_model_wts)
@@ -437,7 +436,7 @@ def main():
 	# for i in range(len(train_Data)):
 	# 	sample = train_Data[i]
 	# 	print (len(sample))
-	train_dataloader = DataLoader(train_Data, batch_size=4, shuffle=True, num_workers=0)
+	train_dataloader = DataLoader(train_Data, batch_size=args.batch_size, shuffle=True, num_workers=0)
 
 
 	model = Net()
