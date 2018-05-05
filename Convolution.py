@@ -417,13 +417,13 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	plt.title("Accuracy")
 	plt.legend(loc="upper right", borderaxespad=1)
 	plt.savefig(args.name +  ".png")
-#	plt.show()
+	plt.show()
 	plt.plot(list(range(num_epochs)), train_losses, "orange",label = "Training Loss")
 	plt.plot(list(range(num_epochs)), val_losses,"red", label = "Validation Loss")
 	plt.title("Loss")
 	plt.legend(loc="upper right", borderaxespad=1)
 	plt.savefig(args.name + "Loss-Convnet.png")
-#	plt.show()
+	plt.show()
 
 	model.load_state_dict(best_model_wts)
 	return model
