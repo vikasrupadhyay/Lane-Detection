@@ -1,4 +1,6 @@
 from __future__ import print_function, division
+import matplotlib
+matplotlib.use('Agg')
 import os
 import glob
 import torch
@@ -63,6 +65,7 @@ parser.add_argument('--prob', type=float, default=0.5, metavar='PR',
 parser.add_argument('--noaug', type=int, default=1, metavar='NA',
                     help='Enter 0 for no Augmentation at all')
 
+parser.add_argument('--name',type =str,default = 'sample',metavar ='NM',help='Enter something')
 
 def new_feature_dataset_type():
 
@@ -158,7 +161,7 @@ class KittiDataset(Dataset):
 				# sure background area
 				sure_bg = cv2.dilate(opening,kernel,iterations=3)
 				# Finding sure foreground area
-				dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
+				dist_transform = cv2.distanceTransform(opening,cv2.cv.CV_DIST_L2,5)
 				ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
 				# Finding unknown region
 				sure_fg = np.uint8(sure_fg)
@@ -207,7 +210,7 @@ class KittiDataset(Dataset):
 
 		if self.transform:
 			self.transform = transforms.Compose(
-                   [
+                   [ 	transforms.Resize((1200,300)),
                    	# p.torch_transform(),
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -350,7 +353,7 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 			if count >= validation_set_size and phase != 'val':
 
 				epoch_loss = curloss / size
-				epoch_acc = correct / size
+				epoch_acc = float(correct.item()) / size
 				if phase == 'train':
 					train_accuracies.append(epoch_acc)
 					train_losses.append(epoch_loss)
@@ -386,12 +389,12 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 				optimizer.step()
 
                 # statistics
-			curloss += loss.data[0] * inputs.size(0)
-			# curloss += loss.item() * inputs.size(0)
+			#curloss += loss.data[0] * inputs.size(0)
+			curloss += loss.item() * inputs.size(0)
 			correct += torch.sum(preds == labels.data.long())
-			size += len(labels)
+			size += len(data["label"])
 		epoch_loss = curloss / size
-		epoch_acc = correct / size
+		epoch_acc = float(correct.item()) / size
 
 		if phase == 'val':
 			val_accuracies.append(epoch_acc)
@@ -413,14 +416,14 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	plt.plot(list(range(num_epochs)), val_accuracies,"blue", label = "Validation Accuracy")
 	plt.title("Accuracy")
 	plt.legend(loc="upper right", borderaxespad=1)
-	plt.savefig("Accuracy-Convnet.png")
-	plt.show()
+	plt.savefig(args.name +  ".png")
+#	plt.show()
 	plt.plot(list(range(num_epochs)), train_losses, "orange",label = "Training Loss")
 	plt.plot(list(range(num_epochs)), val_losses,"red", label = "Validation Loss")
 	plt.title("Loss")
 	plt.legend(loc="upper right", borderaxespad=1)
-	plt.savefig("Loss-Convnet.png")
-	plt.show()
+	plt.savefig(args.name + "Loss-Convnet.png")
+#	plt.show()
 
 	model.load_state_dict(best_model_wts)
 	return model
