@@ -1,5 +1,13 @@
-from __future__ import print_function
 from __future__ import print_function, division
+import argparse
+import torch
+import torch.utils.data
+from torch import nn, optim
+from torch.autograd import Variable
+import torch.nn as nn
+from torch.nn import functional as F
+from torchvision import datasets, transforms
+from torchvision.utils import save_image
 import os
 import glob
 import torch
@@ -23,17 +31,6 @@ import PIL
 import argparse
 import random
 import Augmentor
-from torchvision.utils import save_image
-import argparse
-import torch
-import torch.utils.data
-from torch import nn, optim
-from torch.autograd import Variable
-import torch.nn as nn
-from torch.nn import functional as F
-from torchvision import datasets, transforms
-from torchvision.utils import save_image
-
 
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
@@ -54,7 +51,6 @@ parser.add_argument('--intermediate-size', type=int, default=128, metavar='N',
 #                     help='how wide is the model')
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
-
 
 
 class ToTensor(object):
@@ -119,7 +115,7 @@ class KittiDataset(Dataset):
 
             #rotation of image 
             row,col,ch = 1200,300,3
-
+            cv2.imwrite('image.png',image)
             if args.rot == 1 and np.random.uniform(0,1) > prob:
                 angle = random.randint(1,80)
                 M = cv2.getRotationMatrix2D((300/2,1200/2),angle,1)
@@ -157,6 +153,7 @@ class KittiDataset(Dataset):
 
                 markers = cv2.watershed(image,markers)
                 image[markers == -1] = [255,0,0]
+                cv2.imwrite('Segmentation.png',image)
 
             """*********************************************"""
 
@@ -169,13 +166,14 @@ class KittiDataset(Dataset):
                 image = image + image * gauss
 
 
+
             #HOG descriptor of a image
 
             # hog = cv2.HOGDescriptor()
             # image = hog.compute(image)
 
             #Shear transformation
-            if args.shr == 1 and np.random.uniform(0,1) > prob:
+            if args.shr == 1 :
 
                 pts1 = np.float32([[5,5],[20,5],[5,20]])
 
@@ -185,11 +183,12 @@ class KittiDataset(Dataset):
                 shear = cv2.getAffineTransform(pts1,pts2)
 
                 image = cv2.warpAffine(image,shear,(col,row))
+                cv2.imwrite('shear.png',image)
 
 
         if self.transform:
             self.transform = transforms.Compose(
-                   [#transforms.Resize((224,224)),
+                   [transforms.Resize((32,32)),
                     # p.torch_transform(),
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -206,38 +205,24 @@ class KittiDataset(Dataset):
 
 
 
-def to_img(x):
-    x = 0.5 * (x + 1)
-    x = x.clamp(0, 1)
-    x = x.view(x.size(0), 3, 300, 1200)
-    return x
-
 train_directory ='data_road/training/image_2'
-test_directory = 'data_road/testing/image_2'
-train_Data = KittiDataset(directory = train_directory, augment = False)
-correct_count = 0
-# for i in range(len(train_Data)):
-#   sample = train_Data[i]
-#   print (len(sample))
-train_dataloader = DataLoader(train_Data, batch_size=4, shuffle=True, num_workers=4)
-test_Data = KittiDataset(directory = test_directory)
-test_dataloader = DataLoader(test_Data, batch_size=4, shuffle=True, num_workers=4)
-
-
 
 torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
+train_Data = KittiDataset(directory = train_directory, augment = False)
+
+train_dataloader = DataLoader(train_Data, batch_size=4, shuffle=True, num_workers=4)
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-train_loader = torch.utils.data.DataLoader(
-    datasets.CIFAR10('../data', train=True, download=True,
-                     transform=transforms.ToTensor()),
-    batch_size=args.batch_size, shuffle=True, **kwargs)
-test_loader = torch.utils.data.DataLoader(
-    datasets.CIFAR10('../data', train=False, transform=transforms.ToTensor()),
-    batch_size=args.batch_size, shuffle=False, **kwargs)
+# train_loader = torch.utils.data.DataLoader(
+#     datasets.CIFAR10('../data', train=True, download=True,
+#                      transform=transforms.ToTensor()),
+#     batch_size=args.batch_size, shuffle=True, **kwargs)
+# test_loader = torch.utils.data.DataLoader(
+#     datasets.CIFAR10('../data', train=False, transform=transforms.ToTensor()),
+#     batch_size=args.batch_size, shuffle=False, **kwargs)
 
 
 class VAE(nn.Module):
@@ -249,7 +234,7 @@ class VAE(nn.Module):
         self.conv2 = nn.Conv2d(3, 32, kernel_size=2, stride=2, padding=0)
         self.conv3 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1)
         self.conv4 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1)
-        self.fc1 = nn.Linear(1200 * 300 * 32, args.intermediate_size)
+        self.fc1 = nn.Linear(16 * 16 * 32, args.intermediate_size)
 
         # Latent space
         self.fc21 = nn.Linear(args.intermediate_size, args.hidden_size)
@@ -296,7 +281,6 @@ class VAE(nn.Module):
 
     def forward(self, x):
         mu, logvar = self.encode(x)
-        print (mu.size(),logvar.size())
         z = self.reparameterize(mu, logvar)
         return self.decode(z), mu, logvar
 
@@ -316,43 +300,41 @@ def loss_function(recon_x, x, mu, logvar):
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
     # https://arxiv.org/abs/1312.6114
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+    # KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return BCE + KLD
+    return  BCE
 
 
 def train(epoch):
     model.train()
     train_loss = 0
-    for batch_idx, sample in enumerate(train_dataloader):
-        if args.cuda:
-            image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
-        else:
-            image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()), Variable(sample["label"].float())
-
-        data = image
+    for batch_idx, data in enumerate(train_dataloader):
+        inputs, labels = data['image'].view(len(data["label"]),3,32,32).float(),data['label'].float()
+        data = Variable(inputs)
         if args.cuda:
             data = data.cuda()
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(data)
-        loss = loss_function(recon_batch, data, mu, logvar)
+        loss = torch.nn.MSELoss(inputs,recon_batch)
         loss.backward()
         train_loss += loss.data[0]
         optimizer.step()
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader),
+                epoch, batch_idx * len(data), len(train_dataloader.dataset),
+                100. * batch_idx / len(train_dataloader),
                 loss.data[0] / len(data)))
 
     print('====> Epoch: {} Average loss: {:.4f}'.format(
-          epoch, train_loss / len(train_loader.dataset)))
+          epoch, train_loss / len(train_dataloader.dataset)))
 
 
 def test(epoch):
     model.eval()
     test_loss = 0
-    for i, (data, _) in enumerate(test_dataloader):
+    for i, data in enumerate(train_dataloader):
+        inputs, labels = data['image'].view(len(data["label"]),3,32,32).float(),data['label'].float()
+        data = inputs
         if args.cuda:
             data = data.cuda()
         data = Variable(data, volatile=True)
@@ -366,7 +348,7 @@ def test(epoch):
                        'snapshots/conv_vae/reconstruction_' + str(epoch) +
                        '.png', nrow=n)
 
-    test_loss /= len(test_loader.dataset)
+    test_loss /= len(train_dataloader.dataset)
     print('====> Test set loss: {:.4f}'.format(test_loss))
 
 
