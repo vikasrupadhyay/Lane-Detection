@@ -359,7 +359,7 @@ for epoch in range(2):  # loop over the dataset multiple times
                 
 print('Finished Training')
 
-torch.save(net, "./")
+torch.save(net, "saved_model")
 
 # # Evaluation
 # Let's see how our autoencoder reconstructs given images
@@ -377,7 +377,7 @@ else:
 plt.show(output)
 images[0] = image #original image
 images[1] = output[0].data.view(3,224,224) # reconstructed image
-imshow(torchvision.utils.make_grid(images))
+plt.show(image)
 
 net.eval()
 images = [0,0]
