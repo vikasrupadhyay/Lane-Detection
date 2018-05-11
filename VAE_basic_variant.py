@@ -322,7 +322,7 @@ net = VAE_simple()
 optimizer = optim.Adam(net.parameters())
 
 if torch.cuda.is_available():
-    net  net.cuda()
+    net = net.cuda()
 # In[7]:
 
 net.train() #set the model in the training mode (important for Dropout and BatchNorm)
