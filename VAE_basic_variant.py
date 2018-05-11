@@ -376,9 +376,9 @@ else:
     output = net(Variable(image.unsqueeze(0)))
 images[0] = image #original image
 images[1] = output[0].data.view(3,224,224) # reconstructed image
-cv2.imwrite('output1.png',images[1].cpu().numpy())
-
-cv2.imwrite('image1.png',image[0].numpy())
+# cv2.imwrite('output1.png',images[1].cpu().numpy())
+torchvision.utils.save_image(images[1],'output1.png') 
+torchvision.utils.save_image(images[0],'image1.png') 
 
 net.eval()
 images = [0,0]
