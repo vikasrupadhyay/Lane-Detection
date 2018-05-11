@@ -328,7 +328,7 @@ if torch.cuda.is_available():
 net.train() #set the model in the training mode (important for Dropout and BatchNorm)
 NUMBER_OF_IMAGES = len(train_loader)
 print ("hi")
-for epoch in range(2):  # loop over the dataset multiple times
+for epoch in range(1):  # loop over the dataset multiple times
     print (epoch)
     running_loss = 0.0
     for i, data in tqdm(enumerate(train_loader)):
@@ -374,10 +374,10 @@ if torch.cuda.is_available():
     output = net(Variable(image.unsqueeze(0).cuda()))
 else:
     output = net(Variable(image.unsqueeze(0)))
-cv2.imwrite('output1.png',output)
+cv2.imwrite('output1.png',output.data.numpy())
 images[0] = image #original image
 images[1] = output[0].data.view(3,224,224) # reconstructed image
-cv2.imwrite('image1.png',image)
+cv2.imwrite('image1.png',image.numpy())
 
 net.eval()
 images = [0,0]
