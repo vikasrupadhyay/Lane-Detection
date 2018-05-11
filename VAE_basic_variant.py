@@ -310,7 +310,7 @@ test_directory = 'data_road/testing/image_2'
 train_set = KittiDataset(directory = train_directory, augment = False)
 correct_count = 0
 
-train_loader = DataLoader(train_set, batch_size=4, shuffle=True, num_workers=0];.][][;[;[;[;[;[[[[]]]]]]]]])
+train_loader = DataLoader(train_set, batch_size=4, shuffle=True, num_workers=0)
 
 # train_set = ImageFolder(root='train_set', transform=my_transform) #loading images from folder and resize them to 28x28
 # train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
