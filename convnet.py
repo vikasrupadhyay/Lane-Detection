@@ -449,7 +449,7 @@ def main():
 	train_dataloader = DataLoader(train_Data, batch_size=4, shuffle=True, num_workers=4)
 
 
-	model = Net().float()
+	model = Net()
 	num_epochs = args.epochs
 	num_batchs_test = args.test_batch_size
 	train_batch_size = args.batch_size
