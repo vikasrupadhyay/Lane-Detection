@@ -310,7 +310,7 @@ test_directory = 'data_road/testing/image_2'
 train_set = KittiDataset(directory = train_directory, augment = False)
 correct_count = 0
 
-train_loader = DataLoader(train_set, batch_size=4, shuffle=True, num_workers=0)
+train_loader = DataLoader(train_set, batch_size=4, shuffle=True, num_workers=0];.][][;[;[;[;[;[[[[]]]]]]]]])
 
 # train_set = ImageFolder(root='train_set', transform=my_transform) #loading images from folder and resize them to 28x28
 # train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
@@ -328,10 +328,10 @@ if torch.cuda.is_available():
 net.train() #set the model in the training mode (important for Dropout and BatchNorm)
 NUMBER_OF_IMAGES = len(train_loader)
 print ("hi")
-for epoch in range(100):  # loop over the dataset multiple times
+for epoch in range(2):  # loop over the dataset multiple times
     print (epoch)
     running_loss = 0.0
-    for i, data in enumerate(train_loader):
+    for i, data in tqdm(enumerate(train_loader)):
         # get the inputs
         inputs, labels = data['image'].view(len(data["label"]),3,224,224).float(),data['label'].float()
         
@@ -359,6 +359,7 @@ for epoch in range(100):  # loop over the dataset multiple times
                 
 print('Finished Training')
 
+net.save_state_dict('mytraining.pt')
 
 # # Evaluation
 # Let's see how our autoencoder reconstructs given images
@@ -369,38 +370,38 @@ net.eval()
 images = [0,0]
 image =train_loader.dataset[100]
 image = torch.from_numpy(image['image']).view(3,224,224).float()
-output = net(Variable(image.unsqueeze(0)))
+if torch.cuda.is_available():
+    output = net(Variable(image.unsqueeze(0).cuda()))
+else:
+    output = net(Variable(image.unsqueeze(0)))
 plt.show(output)
 images[0] = image #original image
 images[1] = output[0].data.view(3,224,224) # reconstructed image
 imshow(torchvision.utils.make_grid(images))
 
-
-# In[ ]:
-
-output = net(Variable(train_loader.dataset[3000][0].unsqueeze(0)))
-images[0] = train_loader.dataset[3000][0] #original image
+net.eval()
+images = [0,0]
+image =train_loader.dataset[120]
+image = torch.from_numpy(image['image']).view(3,224,224).float()
+if torch.cuda.is_available():
+    output = net(Variable(image.unsqueeze(0).cuda()))
+else:
+    output = net(Variable(image.unsqueeze(0)))
+plt.show(output)
+images[0] = image #original image
 images[1] = output[0].data.view(3,224,224) # reconstructed image
 imshow(torchvision.utils.make_grid(images))
 
-
-# In[ ]:
-
-output = net(Variable(train_loader.dataset[2500][0].unsqueeze(0)))
-images[0] = train_loader.dataset[2500][0] #original image
+net.eval()
+images = [0,0]
+image =train_loader.dataset[130]
+image = torch.from_numpy(image['image']).view(3,224,224).float()
+if torch.cuda.is_available():
+    output = net(Variable(image.unsqueeze(0).cuda()))
+else:
+    output = net(Variable(image.unsqueeze(0)))
+plt.show(output)
+images[0] = image #original image
 images[1] = output[0].data.view(3,224,224) # reconstructed image
 imshow(torchvision.utils.make_grid(images))
-
-
-# # Generating images
-# 
-# Now we generate images from random samples taken from normal distribution
-
-# In[ ]:
-
-# let's generate 104 images and save it in 13x8 grid
-sample = Variable(torch.randn(104, LATENT_DIM))
-sample = net.decode(sample)
-fig = plt.figure(figsize=(20,20))
-imshow(torchvision.utils.make_grid(sample.data.view(104, 3, 224, 224)))
 
