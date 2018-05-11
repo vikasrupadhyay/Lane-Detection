@@ -383,9 +383,6 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 
 			outputs = model(inputs)
 			_, preds = torch.max(outputs.data, 1)
-			print(labels.long())
-			print()
-			print(outputs.size(),outputs)
 			loss = criterion(outputs, labels.long())
 			print(" This is the loss ",loss)
 
