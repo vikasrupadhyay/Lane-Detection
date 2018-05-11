@@ -374,10 +374,10 @@ if torch.cuda.is_available():
     output = net(Variable(image.unsqueeze(0).cuda()))
 else:
     output = net(Variable(image.unsqueeze(0)))
-plt.show(output)
+cv2.imwrite('output1.png',output)
 images[0] = image #original image
 images[1] = output[0].data.view(3,224,224) # reconstructed image
-plt.show(image)
+cv2.imwrite('image1.png',image)
 
 net.eval()
 images = [0,0]
@@ -387,10 +387,10 @@ if torch.cuda.is_available():
     output = net(Variable(image.unsqueeze(0).cuda()))
 else:
     output = net(Variable(image.unsqueeze(0)))
-plt.show(output)
+cv2.imwrite('output2.png',output)
 images[0] = image #original image
 images[1] = output[0].data.view(3,224,224) # reconstructed image
-imshow(torchvision.utils.make_grid(images))
+cv2.imwrite('image2.png',image)
 
 net.eval()
 images = [0,0]
@@ -400,8 +400,8 @@ if torch.cuda.is_available():
     output = net(Variable(image.unsqueeze(0).cuda()))
 else:
     output = net(Variable(image.unsqueeze(0)))
-plt.show(output)
+cv2.imwrite('output3.png',output)
 images[0] = image #original image
 images[1] = output[0].data.view(3,224,224) # reconstructed image
-imshow(torchvision.utils.make_grid(images))
+cv2.imwrite('image3.png',image)
 
