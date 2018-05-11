@@ -359,7 +359,7 @@ for epoch in range(2):  # loop over the dataset multiple times
                 
 print('Finished Training')
 
-net.save_state_dict('mytraining.pt')
+torch.save(net, "./")
 
 # # Evaluation
 # Let's see how our autoencoder reconstructs given images
