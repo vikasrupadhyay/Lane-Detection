@@ -374,10 +374,11 @@ if torch.cuda.is_available():
     output = net(Variable(image.unsqueeze(0).cuda()))
 else:
     output = net(Variable(image.unsqueeze(0)))
-cv2.imwrite('output1.png',output.data.numpy())
 images[0] = image #original image
 images[1] = output[0].data.view(3,224,224) # reconstructed image
-cv2.imwrite('image1.png',image.numpy())
+cv2.imwrite('output1.png',images[1].numpy())
+
+cv2.imwrite('image1.png',image[0].numpy())
 
 net.eval()
 images = [0,0]
