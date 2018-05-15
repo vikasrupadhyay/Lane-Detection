@@ -273,9 +273,9 @@ def get_data_train():
 def main():
 
 
-    labels, image_ , names  = get_data_train()
+    # labels, image_ , names  = get_data_train()
 
-    print (names)
+    # print (names)
 
     net = VAE_simple()
     net = torch.load('saved_model',map_location ='cpu')
