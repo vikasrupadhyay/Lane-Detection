@@ -29,7 +29,7 @@ parser.add_argument('--b2', type=float, default=0.999, help='adam: decay of firs
 parser.add_argument('--n_cpu', type=int, default=8, help='number of cpu threads to use during batch generation')
 parser.add_argument('--latent_dim', type=int, default=100, help='dimensionality of the latent space')
 parser.add_argument('--num_classes', type=int, default=3, help='number of classes for dataset')
-parser.add_argument('--img_size', type=int, default=224, help='size of each image dimension')
+parser.add_argument('--img_size', type=int, default=32, help='size of each image dimension')
 parser.add_argument('--channels', type=int, default=1, help='number of image channels')
 parser.add_argument('--sample_interval', type=int, default=400, help='interval between image sampling')
 parser.add_argument('--valid_set_size', type=float, default=0.4, metavar='VSS',
@@ -188,7 +188,7 @@ class KittiDataset(Dataset):
 
         if self.transform:
             self.transform = transforms.Compose(
-                   [transforms.Resize((224,224)),
+                   [transforms.Resize((32,32)),
                     # p.torch_transform(),
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -221,24 +221,37 @@ class Generator(nn.Module):
         self.init_size = opt.img_size // 4 # Initial size before upsampling
         self.l1 = nn.Sequential(nn.Linear(opt.latent_dim, 128*self.init_size**2))
 
-        self.conv_blocks = nn.Sequential(
-            nn.BatchNorm2d(128),
+        self.conv_blocks1 = nn.Sequential(nn.BatchNorm2d(128),
             nn.Upsample(scale_factor=2),
             nn.Conv2d(128, 128, 3, stride=1, padding=1),
             nn.BatchNorm2d(128, 0.8),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Upsample(scale_factor=2),
+            nn.LeakyReLU(0.2, inplace=True))
+        self.conv_blocks2 = nn.Sequential(nn.Upsample(scale_factor=2),
             nn.Conv2d(128, 64, 3, stride=1, padding=1),
-            nn.BatchNorm2d(64, 0.8),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.BatchNorm2d(64, 0.8))
+        self.conv_blocks3 = nn.Sequential(nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(64, opt.channels, 3, stride=1, padding=1),
-            nn.Tanh()
-        )
+            nn.Tanh())
+        # self.conv_blocks = nn.Sequential(
+        #     nn.BatchNorm2d(128),
+        #     nn.Upsample(scale_factor=2),
+        #     nn.Conv2d(128, 128, 3, stride=1, padding=1),
+        #     nn.BatchNorm2d(128, 0.8),
+        #     nn.LeakyReLU(0.2, inplace=True),
+        #     nn.Upsample(scale_factor=2),
+        #     nn.Conv2d(128, 64, 3, stride=1, padding=1),
+        #     nn.BatchNorm2d(64, 0.8),
+        #     nn.LeakyReLU(0.2, inplace=True),
+        #     nn.Conv2d(64, opt.channels, 3, stride=1, padding=1),
+        #     nn.Tanh()
+        # )
 
     def forward(self, noise):
         out = self.l1(noise)
         out = out.view(out.shape[0], 128, self.init_size, self.init_size)
-        img = self.conv_blocks(out)
+        img = self.conv_blocks1(out)
+        img = self.conv_blocks2(img)
+        img = self.conv_blocks3(img)
         return img
 
 class Discriminator(nn.Module):
@@ -325,7 +338,7 @@ LongTensor = torch.cuda.LongTensor if cuda else torch.LongTensor
 for epoch in range(opt.n_epochs):
     for i, data in enumerate(dataloader):
 
-        imgs, labels = data['image'].view(len(data["label"]),3,224,224).float(),data['label'].float()
+        imgs, labels = data['image'].view(len(data["label"]),3,32,32).float(),data['label'].float()
         batch_size = imgs.shape[0]
 
         # Adversarial ground truths
@@ -384,8 +397,8 @@ for epoch in range(opt.n_epochs):
         optimizer_D.step()
 
         print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %d%%] [G loss: %f]" % (epoch, opt.n_epochs, i, len(dataloader),
-                                                            d_loss.item(), 100 * d_acc,
-                                                            g_loss.item()))
+                                                            d_loss.data[0], 100 * d_acc,
+                                                            g_loss.data[0]))
 
         batches_done = epoch * len(dataloader) + i
         if batches_done % opt.sample_interval == 0:
