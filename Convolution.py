@@ -1,6 +1,5 @@
 from __future__ import print_function, division
 import matplotlib
-matplotlib.use('Agg')
 import os
 import glob
 import torch
@@ -10,8 +9,6 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 import cv2
 import torchvision.models as models
-from torchvision import transforms, utils
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -353,7 +350,7 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 			if count >= validation_set_size and phase != 'val':
 
 				epoch_loss = curloss / size
-				epoch_acc = float(correct.item()) / size
+				epoch_acc = float(correct) / size
 				if phase == 'train':
 					train_accuracies.append(epoch_acc)
 					train_losses.append(epoch_loss)
@@ -390,11 +387,11 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 
                 # statistics
 			#curloss += loss.data[0] * inputs.size(0)
-			curloss += loss.item() * inputs.size(0)
+			curloss += loss.data[0] * inputs.size(0)
 			correct += torch.sum(preds == labels.data.long())
 			size += len(data["label"])
 		epoch_loss = curloss / size
-		epoch_acc = float(correct.item()) / size
+		epoch_acc = float(correct) / size
 
 		if phase == 'val':
 			val_accuracies.append(epoch_acc)
@@ -416,14 +413,15 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	plt.plot(list(range(num_epochs)), val_accuracies,"blue", label = "Validation Accuracy")
 	plt.title("Accuracy")
 	plt.legend(loc="upper right", borderaxespad=1)
-	plt.savefig(args.name +  ".png")
+	plt.savefig("Accuracy-Convolution.png")
 	plt.show()
 	plt.plot(list(range(num_epochs)), train_losses, "orange",label = "Training Loss")
 	plt.plot(list(range(num_epochs)), val_losses,"red", label = "Validation Loss")
 	plt.title("Loss")
 	plt.legend(loc="upper right", borderaxespad=1)
-	plt.savefig(args.name + "Loss-Convnet.png")
+	plt.savefig("Loss-Convolution.png")
 	plt.show()
+	np.savetxt("conv_data.csv", np.row_stack((train_accuracies, val_accuracies, train_losses, val_losses)), delimiter=",", fmt='%s')
 
 	model.load_state_dict(best_model_wts)
 	return model

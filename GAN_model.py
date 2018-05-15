@@ -1,7 +1,6 @@
 import torch.nn as nn
 
 
-# custom weights initialization called on netG and netD
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
@@ -72,7 +71,7 @@ class netD(nn.Module):
         self.conv4 = nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False)
         self.BatchNorm4 = nn.BatchNorm2d(ndf * 8)
         self.conv5 = nn.Conv2d(ndf * 8, ndf * 1, 4, 1, 0, bias=False)
-        self.disc_linear = nn.Linear(ndf * 1, 10)
+        self.disc_linear = nn.Linear(ndf * 1, 4)
         self.aux_linear = nn.Linear(ndf * 1, nb_label)
         self.softmax = nn.Softmax()
         self.sigmoid = nn.Sigmoid()

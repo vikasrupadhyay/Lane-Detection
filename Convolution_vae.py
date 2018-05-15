@@ -254,15 +254,15 @@ class Net(nn.Module):
 		self.conv1 = nn.Conv2d(3, 5, kernel_size=3,stride =2)
 		self.conv2 = nn.Conv2d(5, 10, kernel_size=3, stride =2)
 		self.conv3 = nn.Conv2d(10, 15, kernel_size=4, stride =1)
-		self.conv4 = nn.Conv2d(15, 20, kernel_size=4, stride =1)
+		self.conv4 = nn.Conv2d(15, 20, kernel_size=4, stride =1, padding = 2)
 		self.conv2_drop = nn.Dropout2d(0.1)
 		self.batchnorm1=nn.BatchNorm2d(3)
 		self.batchnorm2=nn.BatchNorm2d(5)
 		self.batchnorm3=nn.BatchNorm2d(10)
 		self.batchnorm4=nn.BatchNorm2d(15)
-		self.fc1 = nn.Linear(20*16*2, 320)
-		self.fc2 = nn.Linear(320, 60)
-		self.fc3 = nn.Linear(60,3)
+		self.fc1 = nn.Linear(20*3*3, 40)
+		self.fc2 = nn.Linear(40, 20)
+		self.fc3 = nn.Linear(20,3)
 
 	def forward(self, x):
 		#print(x.size())
@@ -272,11 +272,8 @@ class Net(nn.Module):
 		x = F.relu(F.max_pool2d((self.conv3(self.batchnorm3(x))), 2))
 		x = F.relu(F.max_pool2d(self.conv2_drop(self.conv4(self.batchnorm4(x))), 2))
 		#print(x.size())
-		#exit()
 		#x = x.view(-1, 5328)
-		#print(-1,20*74*18)
-		x = x.view(-1,20*16*2)
-		#print(x.size())
+		x = x.view(-1,20*3*3)
 		x = F.relu(self.fc1(x))
 		x = self.fc2(x)
 		x = F.dropout(x, training=self.training)
@@ -346,7 +343,7 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 			if count >= validation_set_size and phase != 'val':
 
 				epoch_loss = curloss / size
-				epoch_acc = float(correct.item()) / size
+				epoch_acc = float(correct) / size
 				if phase == 'train':
 					train_accuracies.append(epoch_acc)
 					train_losses.append(epoch_loss)
@@ -383,11 +380,11 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 
                 # statistics
 			#curloss += loss.data[0] * inputs.size(0)
-			curloss += loss.item() * inputs.size(0)
+			curloss += loss.data[0]* inputs.size(0)
 			correct += torch.sum(preds == labels.data.long())
 			size += len(data["label"])
 		epoch_loss = curloss / size
-		epoch_acc = float(correct.item()) / size
+		epoch_acc = float(correct) / size
 
 		if phase == 'val':
 			val_accuracies.append(epoch_acc)
@@ -497,9 +494,9 @@ def main():
 			# print(i_batch, sample['label'].size(),sample['image'].size())
 		if torch.cuda.is_available():
 
-			image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()).cuda(), Variable(sample["label"].float()).cuda()
+			image, label = Variable(sample["image"].view(len(sample["label"]),3,224,224).float()).cuda(), Variable(sample["label"].float()).cuda()
 		else:
-			image, label = Variable(sample["image"].view(len(sample["label"]),3,1200,300).float()), Variable(sample["label"].float())
+			image, label = Variable(sample["image"].view(len(sample["label"]),3,224,224).float()), Variable(sample["label"].float())
 
 		output = model(image)
 	

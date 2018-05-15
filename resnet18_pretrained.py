@@ -415,6 +415,7 @@ def train_model(model, criterion, optimizer, scheduler,dataloaders, num_epochs=1
 	plt.legend(loc="upper right", borderaxespad=1)
 	plt.savefig("Loss-Resnet.png")
 	plt.show()
+	np.savetxt("resnet_data.csv", np.row_stack((train_accuracies, val_accuracies, train_losses, val_losses)), delimiter=",", fmt='%s')
 
 	model.load_state_dict(best_model_wts)
 	return model

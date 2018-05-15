@@ -278,7 +278,7 @@ def main():
     # print (names)
 
     net = VAE_simple()
-    net = torch.load('saved_model',map_location ='cpu')
+    net = torch.load('saved_model')
     net.eval()
 
 
@@ -313,7 +313,7 @@ def main():
     for i in range(0,len(test_loader)):
         net.eval()
         images = [0,0]
-        image =train_loader.dataset[i]
+        image =test_loader.dataset[i]
         image = torch.from_numpy(image['image']).view(3,224,224).float()
         if torch.cuda.is_available():
             output = net(Variable(image.unsqueeze(0).cuda()))
