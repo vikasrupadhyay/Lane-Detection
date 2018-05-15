@@ -39,54 +39,10 @@ import matplotlib.pyplot as plt
 
 
 
-# parser = argparse.ArgumentParser(description='Lane_detection_using_pretrained_resnet18')
-# parser.add_argument('--batch_size', type=int, default=4, metavar='B',
-#                     help='input batch size for training (default: 4)')
-# parser.add_argument('--test_batch_size', type=int, default=4, metavar='TB',
-#                     help='input batch size for testing (default: 4)')
-# parser.add_argument('--epochs', type=int, default=10, metavar='E',
-#                     help='number of epochs to train (default: 10)')
-# parser.add_argument('--lr', type=float, default=0.006, metavar='LR',
-#                     help='learning rate (default: 0.006)')
-
-# parser.add_argument('--valid_set_size', type=float, default=0.4, metavar='VSS',
-#                     help='validation set size (default: 0.4 so 4 % of all the batchs)')
-
-
-# parser.add_argument('--rot', type=int, default=0, metavar='RO',
-#                     help='1 for augmentation by rotation')
-# #setting Blurring for default augmentation
-# parser.add_argument('--gb', type=int, default=1, metavar='GB',
-#                     help='1 for augmentation by Gaussian Blurring')
-
-# parser.add_argument('--spk', type=int, default=0, metavar='SN',
-#                     help='1 for augmentation by Speckle Noise')
-
-# parser.add_argument('--isw', type=int, default=0, metavar='ISW',
-#                     help='1 for augmentation by Image Segmentation using watershed')
-
-# parser.add_argument('--shr', type=int, default=0, metavar='SH',
-#                     help='1 for augmentation by Shear')
-
-
-
-# parser.add_argument('--prob', type=float, default=0.5, metavar='PR',
-#                     help='Enter value between 0 and 1 for the probability by which augmentation is performed')
-
-
-# parser.add_argument('--noaug', type=int, default=1, metavar='NA',
-#                     help='Enter 0 for no Augmentation at all')
-
-
-
-
 LATENT_DIM = 5 #size of the latent space in the variational autoencoder
 BATCH_SIZE = 128
 
 
-# In[2]:
-
-# helper function for displaying images
 
 def imshow(img):
     npimg = img.numpy()

@@ -34,6 +34,152 @@ from torch import nn
 import matplotlib.pyplot as plt
 
 
+def imshow(img):
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1, 2, 0)))
+    
+class KittiDataset(Dataset):
+    def __init__(self, directory, augment = False, transform=True):
+        directory = directory + "/*.png"
+        self.img_names = list(glob.glob(directory))
+        # print (self.img_names)
+        self.transform = transform
+        self.augment = augment
+        # self.p = Augmentor.Pipeline(directory)
+        # self.p.random_distortion(probability=1, grid_width=4, grid_height=4, magnitude=8)
+        # self.p.flip_left_right(probability=0.5)
+        # self.p.flip_top_bottom(probability=0.5)
+
+
+    def __len__(self):
+        return len(self.img_names)
+
+    def __getitem__(self,idx):
+#         args = parser.parse_args()
+
+        path = self.img_names[idx]
+        image = cv2.imread(path)
+#         print ("epoch")
+
+        newHeight = 1200
+        newWidth = 300
+        # oldHeight = image.shape[0]
+        # oldWidth = image.shape[1]
+        # r = newHeight / oldHeight
+        # newWidth = int(oldWidth * r)
+        dim = (newHeight, newWidth)
+        image = cv2.resize(image, dim,3, interpolation = cv2.INTER_AREA)
+        # image = image.transpose(1,3)
+        image_label = 0
+        # print ("works")
+        if 'uu_' in path:
+            image_label = 0
+        elif 'umm_' in path:
+            image_label = 1
+        elif 'um_' in path:
+            image_label = 2
+        else:
+            print (" error in label")
+            image_label = 2
+#         if self.augment:
+
+#             prob = args.prob
+
+#             if prob <0 or prob >1:
+#                 prob =0.5
+
+#             #rotation of image 
+#             row,col,ch = 1200,300,3
+#             cv2.imwrite('image.png',image)
+#             if args.rot == 1 and np.random.uniform(0,1) > prob:
+#                 angle = random.randint(1,80)
+#                 M = cv2.getRotationMatrix2D((300/2,1200/2),angle,1)
+#                 image = cv2.warpAffine(image.copy(),M,(300,1200))
+#             """*********************************************"""
+#             if args.gb == 1 and np.random.uniform(0,1) > prob:
+#             #Gaussian Blurring
+
+#                 image = cv2.GaussianBlur(image,(5,5),0)
+
+
+#             """*********************************************"""
+#             #Segmentation algorithm using watershed
+#             if args.isw == 1 and np.random.uniform(0,1) > prob:
+
+#                 gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+#                 ret, thresh = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+#                 # noise removal
+#                 kernel = np.ones((3,3),np.uint8)
+#                 opening = cv2.morphologyEx(thresh,cv2.MORPH_OPEN,kernel, iterations = 2)
+#                 # sure background area
+#                 sure_bg = cv2.dilate(opening,kernel,iterations=3)
+#                 # Finding sure foreground area
+#                 dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
+#                 ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
+#                 # Finding unknown region
+#                 sure_fg = np.uint8(sure_fg)
+#                 unknown = cv2.subtract(sure_bg,sure_fg)
+#                 # Marker labelling
+#                 ret, markers = cv2.connectedComponents(sure_fg)
+#                 # Add one to all labels so that sure background is not 0, but 1
+#                 markers = markers+1
+#                 # Now, mark the region of unknown with zero
+#                 markers[unknown==255] = 0
+
+#                 markers = cv2.watershed(image,markers)
+#                 image[markers == -1] = [255,0,0]
+#                 cv2.imwrite('Segmentation.png',image)
+
+#             """*********************************************"""
+
+#             #speckle noise
+
+#             if args.spk == 1 and np.random.uniform(0,1) > prob:
+#                 row,col,ch = 1200,300,3
+#                 gauss = np.random.randn(row,col,ch)
+#                 gauss = gauss.reshape(row,col,ch)        
+#                 image = image + image * gauss
+
+
+
+#             #HOG descriptor of a image
+
+#             # hog = cv2.HOGDescriptor()
+#             # image = hog.compute(image)
+
+#             #Shear transformation
+#             if args.shr == 1 :
+
+#                 pts1 = np.float32([[5,5],[20,5],[5,20]])
+
+#                 pt1 = 5+10*np.random.uniform()-10/2
+#                 pt2 = 20+10*np.random.uniform()-10/2
+#                 pts2 = np.float32([[pt1,5],[pt2,pt1],[5,pt2]])
+#                 shear = cv2.getAffineTransform(pts1,pts2)
+
+#                 image = cv2.warpAffine(image,shear,(col,row))
+#                 cv2.imwrite('shear.png',image)
+
+
+        if self.transform:
+            self.transform = transforms.Compose(
+                   [transforms.Resize((224,224)),
+                    # p.torch_transform(),
+                    transforms.ToTensor(),
+                    # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                    ])
+
+
+            image = self.transform(PIL.Image.fromarray(image))
+
+        dictionary  ={}
+
+        # print (image.shape)
+        dictionary["image"] = np.array(image,dtype = float)
+        dictionary["label"] = float(image_label)
+        dictionary["path"] = str(path)
+        return dictionary
+
 
 
 LATENT_DIM = 5 #size of the latent space in the variational autoencoder
@@ -107,7 +253,7 @@ def get_data_train():
 	for img in glob.glob("data_road/training/image_2/*.png"):
 		names.append(img)
 		n= np.array(cv2.resize(cv2.imread(img),(224,224)))
-		# print (n.shape)
+
 		train_images.append(n)
 		if 'uu_' in img:
 			train_image_labels.append(1)
@@ -127,27 +273,60 @@ def get_data_train():
 def main():
 
 
-	labels, image_ , names  = get_data_train()
+    labels, image_ , names  = get_data_train()
 
-	print (names)
+    print (names)
 
-	net = VAE_simple()
-	net = torch.load('saved_model',map_location ='cpu')
-	net.eval()
+    net = VAE_simple()
+    net = torch.load('saved_model',map_location ='cpu')
+    net.eval()
 
-	for i in range(0,len(image_)):
-		images = [0,0]
-		imageact = image_[i]
-		image = torch.from_numpy(imageact).view(3,224,224).float()
-		if torch.cuda.is_available():
-			output = net(Variable(image.unsqueeze(0).cuda()))
-		else:
-			output = net(Variable(image.unsqueeze(0)))
-		images[0] = image #original image
-		images[1] = output[0].data.view(3,224,224) # reconstructed image
-	# cv2.imwrite('output1.png',images[1].cpu().numpy())
-		torchvision.utils.save_image(images[1],'vaedataset/' + names[i]) 
-		# torchvision.utils.save_image(images[0],'image1.png') 
-		print ("done")
+
+
+    train_directory ='data_road/training/image_2'
+
+    test_directory = 'data_road/testing/image_2'
+    train_set = KittiDataset(directory = train_directory, augment = False)
+    correct_count = 0
+
+    train_loader = DataLoader(train_set, batch_size=1, shuffle=False, num_workers=0)
+
+    for i in range(0,len(train_loader)):
+        net.eval()
+        images = [0,0]
+        image =train_loader.dataset[i]
+        image = torch.from_numpy(image['image']).view(3,224,224).float()
+        if torch.cuda.is_available():
+            output = net(Variable(image.unsqueeze(0).cuda()))
+        else:
+            output = net(Variable(image.unsqueeze(0)))
+        images[0] = image #original image
+        images[1] = output[0].data.view(3,224,224) # reconstructed image
+        # cv2.imwrite('output1.png',images[1].cpu().numpy())
+        torchvision.utils.save_image(images[1],'vaedataset/' + train_loader.dataset[i]["path"]) 
+        torchvision.utils.save_image(images[0],'image1.png') 
+
+    test_set = KittiDataset(directory=test_directory,augment=False)
+    test_loader = DataLoader(test_set, batch_size=1, shuffle=False, num_workers=0)
+
+    print (" Train set created ")
+    for i in range(0,len(test_loader)):
+        net.eval()
+        images = [0,0]
+        image =train_loader.dataset[i]
+        image = torch.from_numpy(image['image']).view(3,224,224).float()
+        if torch.cuda.is_available():
+            output = net(Variable(image.unsqueeze(0).cuda()))
+        else:
+            output = net(Variable(image.unsqueeze(0)))
+        images[0] = image #original image
+        images[1] = output[0].data.view(3,224,224) # reconstructed image
+        # cv2.imwrite('output1.png',images[1].cpu().numpy())
+        torchvision.utils.save_image(images[1],'vaedataset/' + test_loader.dataset[i]["path"]) 
+        torchvision.utils.save_image(images[0],'image1.png') 
+
+
+    print (" Test set created ")
+
 
 main()
